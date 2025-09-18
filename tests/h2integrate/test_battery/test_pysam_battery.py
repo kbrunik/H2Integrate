@@ -127,22 +127,34 @@ def test_pysam_battery_performance_model(subtests):
 
 def test_battery_config(subtests):
     batt_kw = 5e3
-    config_data = {"system_capacity_kwh": batt_kw * 4, "system_capacity_kw": batt_kw}
+    config_data = {
+        "max_capacity": batt_kw * 4,
+        "rated_commodity_capacity": batt_kw,
+        "chemistry": "LFPGraphite",
+        "init_charge_percent": 0.1,
+        "max_charge_percent": 0.9,
+        "min_charge_percent": 0.1,
+        "system_model_source": "pysam",
+    }
 
     config = PySAMBatteryPerformanceModelConfig.from_dict(config_data)
 
     with subtests.test("with minimal params batt_kw"):
-        assert config.system_capacity_kw == batt_kw
+        assert config.rated_commodity_capacity == batt_kw
     with subtests.test("with minimal params system_capacity_kwh"):
-        assert config.system_capacity_kwh == batt_kw * 4
-    with subtests.test("with minimal params tracking"):
-        assert config.tracking is True
+        assert config.max_capacity == batt_kw * 4
     with subtests.test("with minimal params minimum_SOC"):
-        assert config.minimum_SOC == 10.0
+        assert (
+            config.min_charge_percent == 0.1
+        )  # Decimal percent as compared to test_battery.py in HOPP 10%
     with subtests.test("with minimal params maximum_SOC"):
-        assert config.maximum_SOC == 90.0
+        assert (
+            config.max_charge_percent == 0.9
+        )  # Decimal percent as compared to test_battery.py in HOPP 90%
     with subtests.test("with minimal params initial_SOC"):
-        assert config.initial_SOC == 50.0
+        assert (
+            config.init_charge_percent == 0.1
+        )  # Decimal percent as compared to test_battery.py in HOPP 10%
     with subtests.test("with minimal params system_model_source"):
         assert config.system_model_source == "pysam"
     with subtests.test("with minimal params n_timesteps"):
@@ -157,29 +169,29 @@ def test_battery_config(subtests):
     with subtests.test("with invalid capacity"):
         with pytest.raises(ValueError):
             data = deepcopy(config_data)
-            data["system_capacity_kw"] = -1.0
+            data["rated_commodity_capacity"] = -1.0
             PySAMBatteryPerformanceModelConfig.from_dict(data)
 
         with pytest.raises(ValueError):
             data = deepcopy(config_data)
-            data["system_capacity_kwh"] = -1.0
+            data["max_capacity"] = -1.0
             PySAMBatteryPerformanceModelConfig.from_dict(data)
 
     with subtests.test("with invalid SOC"):
         # SOC values must be between 0-100
         with pytest.raises(ValueError):
             data = deepcopy(config_data)
-            data["minimum_SOC"] = -1.0
+            data["min_charge_percent"] = -1.0
             PySAMBatteryPerformanceModelConfig.from_dict(data)
 
         with pytest.raises(ValueError):
             data = deepcopy(config_data)
-            data["maximum_SOC"] = 120.0
+            data["max_charge_percent"] = 120.0
             PySAMBatteryPerformanceModelConfig.from_dict(data)
 
         with pytest.raises(ValueError):
             data = deepcopy(config_data)
-            data["initial_SOC"] = 120.0
+            data["init_charge_percent"] = 120.0
             PySAMBatteryPerformanceModelConfig.from_dict(data)
 
 
