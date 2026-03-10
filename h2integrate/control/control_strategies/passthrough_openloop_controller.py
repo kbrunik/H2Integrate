@@ -9,6 +9,7 @@ from h2integrate.core.utilities import BaseConfig, merge_shared_inputs
 class PassThroughOpenLoopControllerConfig(BaseConfig):
     commodity: str = field()
     commodity_rate_units: str = field()
+    demand_profile: int | float | list = field(default=0.0)
 
 
 class PassThroughOpenLoopController(om.ExplicitComponent):
@@ -49,7 +50,7 @@ class PassThroughOpenLoopController(om.ExplicitComponent):
 
         self.add_input(
             f"{self.config.commodity}_demand",
-            val=0.0,
+            val=self.config.demand_profile,
             shape=n_timesteps,
             units=self.config.commodity_rate_units,
             desc=f"{self.config.commodity} demand",
@@ -73,9 +74,18 @@ class PassThroughOpenLoopController(om.ExplicitComponent):
                 - {commodity}_out: Output commodity flow, equal to the input flow.
         """
 
+        if np.sum(inputs[f"{self.config.commodity}_demand"]) > 0:
+            commodity_demand = inputs[f"{self.config.commodity}_demand"]
+        else:
+            # If the commodity_demand is zero, use the average
+            # commodity_in as the demand
+            commodity_demand = np.mean(inputs[f"{self.config.commodity}_in"]) * np.ones(
+                len(inputs[f"{self.config.commodity}_demand"])
+            )
+
         # Assign the input to the output
         outputs[f"{self.config.commodity}_set_point"] = (
-            inputs[f"{self.config.commodity}_demand"] - inputs[f"{self.config.commodity}_in"]
+            commodity_demand - inputs[f"{self.config.commodity}_in"]
         )
 
     def setup_partials(self):

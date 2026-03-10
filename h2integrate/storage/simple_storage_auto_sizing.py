@@ -176,7 +176,7 @@ class StorageAutoSizingModel(PerformanceModelBaseClass):
         combined_commodity_out = inputs[f"{self.commodity}_in"] + storage_commodity_out
 
         # find the total commodity out to meet demand
-        total_commodity_out = np.minimum(inputs[f"{self.commodity}_demand"], combined_commodity_out)
+        total_commodity_out = np.minimum(commodity_demand, combined_commodity_out)
 
         # determine how much of the inflow commodity was unused
         # unused_commodity = np.maximum(
