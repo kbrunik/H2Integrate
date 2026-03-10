@@ -138,7 +138,7 @@ class SimpleGenericStorage(PerformanceModelBaseClass):
         #     0, inputs[f"{self.commodity}_demand"] - combined_commodity_out
         # )
 
-        discharge_storage = np.where(storage_commodity_out > 0, storage_commodity_out, 0)
+        np.where(storage_commodity_out > 0, storage_commodity_out, 0)
 
         # TODO: update the below outputs
         # Pass the commodity_out as the commodity_set_point
@@ -148,7 +148,7 @@ class SimpleGenericStorage(PerformanceModelBaseClass):
         outputs[f"rated_{self.commodity}_production"] = inputs["max_charge_rate"]
 
         # Calculate the total and annual commodity produced
-        outputs[f"total_{self.commodity}_produced"] = discharge_storage.sum()
+        outputs[f"total_{self.commodity}_produced"] = outputs[f"{self.commodity}_out"].sum()
         outputs[f"annual_{self.commodity}_produced"] = outputs[
             f"total_{self.commodity}_produced"
         ] * (1 / self.fraction_of_year_simulated)
