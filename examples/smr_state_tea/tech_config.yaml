@@ -17,6 +17,23 @@ technologies:
         price: 4.2  # USD/MMBtu
         annual_cost: 0.
         start_up_cost: 0.
+  grid_feedstock:
+    performance_model:
+      model: FeedstockPerformanceModel
+    cost_model:
+      model: FeedstockCostModel
+    model_inputs:
+      shared_parameters:
+        commodity: electricity
+        commodity_rate_units: MW
+      performance_parameters:
+        rated_capacity: 30.  # TODO: udpate
+      cost_parameters:
+        commodity_amount_units: MW*h
+        cost_year: 2022
+        price: 58.02  # USD/MWh, UPDATE
+        annual_cost: 0.
+        start_up_cost: 0.
   smr:
     performance_model:
       model: null

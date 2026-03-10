@@ -4,6 +4,9 @@ sites:
   site:
     latitude: 34.22
     longitude: -102.75
+technology_interconnections:
+  - [ng_feedstock, smr, natural_gas, pipe]
+  - [grid_feedstock, smr, electricity, cable]
 plant:
   plant_life: 30
   simulation:
