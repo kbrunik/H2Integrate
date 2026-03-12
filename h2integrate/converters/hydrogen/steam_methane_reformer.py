@@ -61,7 +61,7 @@ class SteamMethaneReformerPerformanceModel(PerformanceModelBaseClass):
 
         # Add natural_gas_usage_mmbtu_per_kg as an OpenMDAO input with config value as default
         self.add_input(
-            "natural_gas_usage_mmbtu_per_kg",
+            "natural_gas_usage_rate",
             val=self.config.natural_gas_usage_mmbtu_per_kg,
             units="MMBtu/kg",
             desc="Plant natural gas usage rate in MMBtu/kg",
@@ -69,7 +69,7 @@ class SteamMethaneReformerPerformanceModel(PerformanceModelBaseClass):
 
         # Add electricity_usage_kwh_per_kg as an OpenMDAO input with config value as default
         self.add_input(
-            "electricity_usage_kwh_per_kg",
+            "electricity_usage_rate",
             val=self.config.electricity_usage_kwh_per_kg,
             units="(kW*h)/kg",
             desc="Plant electricity usage rate in kWh/kg",
@@ -77,7 +77,7 @@ class SteamMethaneReformerPerformanceModel(PerformanceModelBaseClass):
 
         # Add rated capacity as an input with config value as default
         self.add_input(
-            "system_capacity_tonnes_per_day",
+            "system_capacity",
             val=self.config.system_capacity_tonnes_per_day,
             units="t/d",
             desc="SMR plant rated capacity in t/d",
@@ -154,19 +154,19 @@ class SteamMethaneReformerPerformanceModel(PerformanceModelBaseClass):
 
         Args:
             inputs: OpenMDAO inputs object containing natural_gas_in,
-                natural_gas_usage_mmbtu_per_kg, electricity_usage_kwh_per_kg,
-                system_capacity_tonnes_per_day, and hydrogen_demand.
+                natural_gas_usage_rate, electricity_usage_rate,
+                system_capacity, and hydrogen_demand.
             outputs: OpenMDAO outputs object for hydrogen_out, natural_gas_consumed,
                 electricity_consumed, and unmet_hydrogen_demand.
         """
 
         # calculate max input and output
-        system_capacity_kg_per_hour = inputs["system_capacity_tonnes_per_day"] * (
+        system_capacity_kg_per_hour = inputs["system_capacity"] * (
             1000 / 24
         )  # plant capacity in kg/h
-        natural_gas_usage_mmbtu_per_kg = inputs["natural_gas_usage_mmbtu_per_kg"]
+        natural_gas_usage_mmbtu_per_kg = inputs["natural_gas_usage_rate"]
         max_natural_gas_consumption = system_capacity_kg_per_hour * natural_gas_usage_mmbtu_per_kg
-        electricity_usage_kWh_per_kg = inputs["electricity_usage_kwh_per_kg"]
+        electricity_usage_kWh_per_kg = inputs["electricity_usage_rate"]
         max_electricity_consumption = system_capacity_kg_per_hour * electricity_usage_kWh_per_kg
 
         # hydrogen demand, saturated at maximum rated system capacity
@@ -274,19 +274,19 @@ class SteamMethaneReformerCostModel(CostModelBaseClass):
             desc="Electrical equivalent rated hydrogen production from performance model",
         )
         self.add_input(
-            "capex_per_kw",
+            "unit_capex",
             val=self.config.capex_per_kw,
             units="USD/kW",
             desc="Capital cost per unit capacity",
         )
         self.add_input(
-            "fixed_opex_per_kw_per_year",
+            "fixed_opex",
             val=self.config.fixed_opex_per_kw_per_year,
             units="USD/(kW*year)",
             desc="Fixed operating expenses per unit capacity per year",
         )
         self.add_input(
-            "variable_opex_per_kwh",
+            "variable_opex",
             val=self.config.variable_opex_per_kwh,
             units="USD/(kW*h)",
             desc="Variable operating expenses per unit generation",
@@ -303,9 +303,9 @@ class SteamMethaneReformerCostModel(CostModelBaseClass):
         electricity_equivalent_out = (hydrogen_out * HHV_H2_MJ_PER_KG) / (
             3600.0 * 0.001
         )  # Convert kg/h to kW
-        capex_per_kw = inputs["capex_per_kw"]
-        fixed_opex_per_kw_per_year = inputs["fixed_opex_per_kw_per_year"]
-        variable_opex_per_kwh = inputs["variable_opex_per_kwh"]
+        capex_per_kw = inputs["unit_capex"]
+        fixed_opex_per_kw_per_year = inputs["fixed_opex"]
+        variable_opex_per_kwh = inputs["variable_opex"]
 
         # Sum hourly electricity output to get annual generation
         # electricity_out is in MW, so sum gives MWh for hourly data
@@ -324,8 +324,6 @@ class SteamMethaneReformerCostModel(CostModelBaseClass):
             variable_opex_per_kwh * delivered_electricity_MWh * 1000
         )  # convert MWh to kWh for variable O&M calculation
 
-        # Total operating expenditure includes all O&M
-        opex = fixed_om + variable_om
-
         outputs["CapEx"] = capex
-        outputs["OpEx"] = opex
+        outputs["OpEx"] = fixed_om
+        outputs["VarOpEx"] = variable_om
