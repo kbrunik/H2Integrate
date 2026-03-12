@@ -34,7 +34,7 @@ technologies:
         price: 58.02  # USD/MWh, UPDATE
         annual_cost: 0.
         start_up_cost: 0.
-  smr_plant:
+  smr:
     performance_model:
       model: SteamMethaneReformerPerformanceModel
     cost_model:

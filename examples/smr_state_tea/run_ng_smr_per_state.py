@@ -24,7 +24,7 @@ new_csv_filename = check_file_format_for_csv_generator(
 updated_driver = update_defaults(
     driver_config["driver"],
     "filename",
-    new_csv_filename.name,
+    new_csv_filename,
 )
 driver_config["driver"].update(updated_driver)
 
