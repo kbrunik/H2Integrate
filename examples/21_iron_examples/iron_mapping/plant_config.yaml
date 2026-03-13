@@ -1,5 +1,5 @@
 name: plant_config
-description: This plant is located in MN, USA...
+description: This file contains plant-specific parameters for the iron mapping example.
 sites:
   site:
     latitude: 41.717
