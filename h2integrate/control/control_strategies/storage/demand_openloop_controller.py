@@ -20,13 +20,13 @@ class DemandOpenLoopStorageControllerConfig(DemandOpenLoopControlBaseConfig):
 
     Attributes:
         max_capacity (float): Maximum storage capacity of the commodity (in non-rate units,
-            e.g., "kg" if `commodity_units` is "kg/h").
-        max_charge_percent (float): Maximum allowable state of charge (SOC) as a percentage
-            of `max_capacity`, represented as a decimal between 0 and 1.
-        min_charge_percent (float): Minimum allowable SOC as a percentage of `max_capacity`,
-            represented as a decimal between 0 and 1.
-        init_charge_percent (float): Initial SOC as a percentage of `max_capacity`, represented
-            as a decimal between 0 and 1.
+            e.g., "kg" if `commodity_rate_units` is "kg/h").
+        max_charge_fraction (float): Maximum allowable state of charge (SOC) as a fraction
+            of `max_capacity`, between 0 and 1.
+        min_charge_fraction (float): Minimum allowable SOC as a fraction of `max_capacity`,
+            between 0 and 1.
+        init_charge_fraction (float): Initial SOC as a fraction of `max_capacity`,
+            between 0 and 1.
         max_charge_rate (float): Maximum rate at which the commodity can be charged (in units
             per time step, e.g., "kg/time step"). This rate does not include the charge_efficiency.
         charge_equals_discharge (bool, optional): If True, set the max_discharge_rate equal to the
@@ -48,9 +48,9 @@ class DemandOpenLoopStorageControllerConfig(DemandOpenLoopControlBaseConfig):
     """
 
     max_capacity: float = field()
-    max_charge_percent: float = field(validator=range_val(0, 1))
-    min_charge_percent: float = field(validator=range_val(0, 1))
-    init_charge_percent: float = field(validator=range_val(0, 1))
+    max_charge_fraction: float = field(validator=range_val(0, 1))
+    min_charge_fraction: float = field(validator=range_val(0, 1))
+    init_charge_fraction: float = field(validator=range_val(0, 1))
     max_charge_rate: float = field(validator=gte_zero)
     charge_equals_discharge: bool = field(default=True)
     max_discharge_rate: float | None = field(default=None)
@@ -119,27 +119,27 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
 
     Inputs:
         {commodity}_in (float): Input commodity flow timeseries (e.g., hydrogen production).
-            - Units: Defined in `commodity_units` (e.g., "kg/h").
+            - Units: Defined in `commodity_rate_units` (e.g., "kg/h").
 
     Outputs:
         {commodity}_out (float): Output commodity flow timeseries after storage to meet demand.
-            - Units: Defined in `commodity_units` (e.g., "kg/h").
+            - Units: Defined in `commodity_rate_units` (e.g., "kg/h").
             - Note: the may include commodity from commodity_in that was never used to charge the
                     storage system but was directly dispatched to meet demand.
         {commodity}_soc (float): State of charge (SOC) timeseries for the storage system.
             - Units: "unitless" (percentage of maximum capacity given as a ratio between 0 and 1).
         {commodity}_unused_commodity (float): Curtailment timeseries for unused
-        input commodity.
-            - Units: Defined in `commodity_units` (e.g., "kg/h").
+            input commodity.
+            - Units: Defined in `commodity_rate_units` (e.g., "kg/h").
             - Note: curtailment in this case does not reduce what the converter produces, but
                 rather the system just does not use it (throws it away) because this controller is
                 specific to the storage technology and has no influence on other technologies in
                 the system.
         {commodity}_unmet_demand (float): Unmet demand timeseries when demand exceeds supply.
             Same meaning as missed load.
-            - Units: Defined in `commodity_units` (e.g., "kg/h").
+            - Units: Defined in `commodity_rate_units` (e.g., "kg/h").
         total_{commodity}_unmet_demand (float): Total unmet demand over the simulation period.
-            - Units: Defined in `commodity_units` (e.g., "kg").
+            - Units: Defined in `commodity_rate_units` (e.g., "kg").
     """
 
     def setup(self):
@@ -159,7 +159,7 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
         Outputs defined:
             * ``<commodity>_soc``: Timeseries of storage state of charge.
             * ``storage_duration``: Estimated duration (hours) the storage can
-            discharge at its maximum rate.
+                discharge at its maximum rate.
 
         Returns:
             None
@@ -173,19 +173,19 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
 
         self.n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
 
-        commodity = self.config.commodity_name
+        commodity = self.config.commodity
 
         self.add_input(
             "max_charge_rate",
             val=self.config.max_charge_rate,
-            units=self.config.commodity_units,
+            units=self.config.commodity_rate_units,
             desc="Storage charge/discharge rate",
         )
 
         self.add_input(
             "max_capacity",
             val=self.config.max_capacity,
-            units=self.config.commodity_units + "*h",
+            units=self.config.commodity_rate_units + "*h",
             desc="Maximum storage capacity",
         )
 
@@ -241,7 +241,7 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
         Returns:
             None
         """
-        commodity = self.config.commodity_name
+        commodity = self.config.commodity
         if np.all(inputs[f"{commodity}_demand"] == 0.0):
             msg = "Demand profile is zero, check that demand profile is input"
             raise UserWarning(msg)
@@ -259,9 +259,9 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
             raise UserWarning(msg)
 
         max_capacity = inputs["max_capacity"].item()
-        max_charge_percent = self.config.max_charge_percent
-        min_charge_percent = self.config.min_charge_percent
-        init_charge_percent = self.config.init_charge_percent
+        max_charge_fraction = self.config.max_charge_fraction
+        min_charge_fraction = self.config.min_charge_fraction
+        init_charge_fraction = self.config.init_charge_fraction
         max_charge_rate = inputs["max_charge_rate"].item()
         if self.config.charge_equals_discharge:
             max_discharge_rate = inputs["max_charge_rate"].item()
@@ -272,14 +272,14 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
 
         # Initialize time-step state of charge prior to loop so the loop starts with
         # the previous time step's value
-        soc = deepcopy(init_charge_percent)
+        soc = deepcopy(init_charge_fraction)
 
         demand_profile = inputs[f"{commodity}_demand"]
 
         # initialize outputs
         soc_array = outputs[f"{commodity}_soc"]
         unused_commodity_array = outputs[f"{commodity}_unused_commodity"]
-        output_array = outputs[f"{commodity}_out"]
+        output_array = outputs[f"{commodity}_set_point"]
         unmet_demand_array = outputs[f"{commodity}_unmet_demand"]
 
         # Loop through each time step
@@ -288,8 +288,8 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
             input_flow = inputs[f"{commodity}_in"][t]
 
             # Calculate the available charge/discharge capacity
-            available_charge = float((max_charge_percent - soc) * max_capacity)
-            available_discharge = float((soc - min_charge_percent) * max_capacity)
+            available_charge = float((max_charge_fraction - soc) * max_capacity)
+            available_discharge = float((soc - min_charge_fraction) * max_capacity)
 
             # Initialize persistent variables for curtailment and missed load
             unused_input = 0.0
@@ -326,7 +326,7 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
                 output_array[t] = demand_t
 
             # Ensure SOC stays within bounds
-            soc = max(min_charge_percent, min(max_charge_percent, soc))
+            soc = max(min_charge_fraction, min(max_charge_fraction, soc))
 
             # Record the SOC for the current time step
             soc_array[t] = deepcopy(soc)
@@ -338,7 +338,7 @@ class DemandOpenLoopStorageController(DemandOpenLoopControlBase):
             # Record the missed load at the current time step
             unmet_demand_array[t] = max(0.0, (demand_t - output_array[t]))
 
-        outputs[f"{commodity}_out"] = output_array
+        outputs[f"{commodity}_set_point"] = output_array
 
         # Return the SOC
         outputs[f"{commodity}_soc"] = soc_array

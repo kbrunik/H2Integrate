@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from h2integrate.core.utilities import load_yaml
+from h2integrate.core.file_utils import load_yaml
 
 
 CD = Path(__file__).parent
@@ -29,11 +29,11 @@ def main(config):
     Args:
         config (object): Configuration object containing:
             - model (dict): Includes:
-                - `refit_coeffs` (bool): Whether to refit model coefficients.
-                - `inputs_fp` (str): File path for input coefficients (if refitting).
-                - `coeffs_fp` (str): File path for stored coefficients.
+                - ``refit_coeffs`` (bool): Whether to refit model coefficients.
+                - ``inputs_fp`` (str): File path for input coefficients (if refitting).
+                - ``coeffs_fp`` (str): File path for stored coefficients.
             - product_selection (str): Selected iron ore product.
-            - site (dict): Contains `name` (str), the site name.
+            - site (dict): Contains ``name`` (str), the site name.
 
     Returns:
         pd.DataFrame: DataFrame containing processed cost coefficients for the

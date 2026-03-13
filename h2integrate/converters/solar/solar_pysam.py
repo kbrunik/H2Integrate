@@ -1,8 +1,9 @@
 import PySAM.Pvwattsv8 as Pvwatts
 from attrs import field, define
 
-from h2integrate.core.utilities import BaseConfig, merge_shared_inputs, check_pysam_input_params
+from h2integrate.core.utilities import BaseConfig, merge_shared_inputs
 from h2integrate.core.validators import contains, range_val_or_none
+from h2integrate.converters.tools import check_pysam_input_params
 from h2integrate.converters.solar.solar_baseclass import SolarPerformanceBaseClass
 
 
@@ -156,12 +157,6 @@ class PYSAMSolarPlantPerformanceModel(SolarPerformanceBaseClass):
             desc="PV rated capacity in DC",
         )
         self.add_output("system_capacity_AC", val=0.0, units="kW", desc="PV rated capacity in AC")
-        self.add_output(
-            "annual_energy",
-            val=0.0,
-            units="kW*h/year",
-            desc="Annual energy production in kWac",
-        )
 
         if self.design_config.create_model_from == "default":
             self.system_model = Pvwatts.default(self.design_config.config_name)
@@ -298,4 +293,12 @@ class PYSAMSolarPlantPerformanceModel(SolarPerformanceBaseClass):
         pv_capacity_kWdc = self.system_model.value("system_capacity")
         dc_ac_ratio = self.system_model.value("dc_ac_ratio")
         outputs["system_capacity_AC"] = pv_capacity_kWdc / dc_ac_ratio
-        outputs["annual_energy"] = self.system_model.value("ac_annual")
+        outputs["rated_electricity_production"] = outputs["system_capacity_AC"]
+        outputs["total_electricity_produced"] = outputs["electricity_out"].sum() * (self.dt / 3600)
+
+        max_production = (
+            outputs["rated_electricity_production"] * self.n_timesteps * (self.dt / 3600)
+        )
+
+        outputs["capacity_factor"] = outputs["total_electricity_produced"] / max_production
+        outputs["annual_electricity_produced"] = self.system_model.value("ac_annual")

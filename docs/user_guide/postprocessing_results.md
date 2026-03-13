@@ -19,17 +19,17 @@ Here is a snippet of the output from a simulation:
 varname                               val                  units     prom_name
 ------------------------------------  -------------------  --------  -----------------------------------------------
 plant
-  hopp
-    hopp
-      electricity_out                 |85694382.72934064|   kW         hopp.electricity_out
-      CapEx                           [4.00631628e+09]      USD        hopp.CapEx
-      OpEx                            [70417369.71000001]   USD/year   hopp.OpEx
+  HOPPComponent
+    HOPPComponent
+      electricity_out                 |85694382.72934064|   kW         HOPPComponent.electricity_out
+      CapEx                           [4.00631628e+09]      USD        HOPPComponent.CapEx
+      OpEx                            [70417369.71000001]   USD/year   HOPPComponent.OpEx
   hopp_to_steel_cable
     electricity_out                   |85694382.72934064|   kW         hopp_to_steel_cable.electricity_out
   hopp_to_electrolyzer_cable
     electricity_out                   |85694382.72934064|   kW         hopp_to_electrolyzer_cable.electricity_out
   electrolyzer
-    eco_pem_electrolyzer_performance
+    ECOElectrolyzerPerformanceModel
       hydrogen_out                    |1100221.2561732|     kg/h       electrolyzer.hydrogen_out
       time_until_replacement          [47705.10433122]      h          electrolyzer.time_until_replacement
       total_hydrogen_produced         [89334697.48304178]   kg/year    electrolyzer.total_hydrogen_produced
@@ -45,9 +45,9 @@ plant
     ProFastComp_1
       LCOE                            [0.09795931]          USD/(kW*h)   finance_subgroup_default.LCOE
   steel
-    steel_performance
+    SteelPerformanceModel
       steel                           |9615.91147134|       t/year     steel.steel
-    steel_cost
+    SteelCostAndFinancialModel
       CapEx                           [5.78060014e+08]      USD        steel.CapEx
       OpEx                            [1.0129052e+08]       USD/year   steel.OpEx
       LCOS                            [1213.87728644]       USD/t      steel.LCOS
@@ -122,7 +122,7 @@ When providing a list of variable names, the function uses the default units for
 # Get a subset of timeseries data using a list of variable names
 output_vars = [
     "electrolyzer.hydrogen_out",
-    "hopp.electricity_out",
+    "HOPPComponent.electricity_out",
     "ammonia.ammonia_out",
     "h2_storage.hydrogen_out",
 ]
@@ -158,7 +158,7 @@ When providing a dictionary with variable names as keys and dictionaries as valu
 # Specify variables with alternative names and/or units
 vars_with_options = {
     "electrolyzer.hydrogen_out": {"alternative_name": "Electrolyzer Hydrogen Output"},
-    "hopp.electricity_out": {"units": "kW", "alternative_name": "Plant Electricity Output"},
+    "HOPPComponent.electricity_out": {"units": "kW", "alternative_name": "Plant Electricity Output"},
     "ammonia.ammonia_out": {"alternative_name": None},  # Uses default variable name
     "h2_storage.hydrogen_out": {"alternative_name": "H2 Storage Hydrogen Output"},
 }
@@ -171,4 +171,57 @@ timeseries_data = save_case_timeseries_as_csv(
 
 ```{note}
 The `electricity_base_unit` argument (default: `"MW"`) controls the units used for electricity-based variables when no specific units are provided. Valid options are `"W"`, `"kW"`, `"MW"`, or `"GW"`.
+```
+
+### Summarizing scalar results to CSV
+
+While `save_case_timeseries_as_csv` exports time-series data, the `convert_sql_to_csv_summary` function extracts **scalar** results from one or more SQL recorder files and writes them to a single CSV summary.
+This is especially useful when running parameter sweeps or DOE studies, where each row in the output corresponds to a different case.
+
+The function:
+
+- Collects every scalar output (single-element arrays) plus design variables.
+- Reports VarOpEx values for the first year only.
+- Averages capacity-factor and annual-production arrays over the project lifetime.
+- Renames columns to include units, e.g. `plant.LCOH (USD/kg)`.
+- When running in parallel, automatically aggregates results from all partitioned SQL files (e.g. `cases.sql_0`, `cases.sql_1`, ...) while skipping the `_meta` companion file.
+
+#### Basic usage
+
+```python
+from h2integrate.postprocess.sql_to_csv import convert_sql_to_csv_summary
+
+# Summarize scalar results and write a CSV next to the SQL file
+df = convert_sql_to_csv_summary("path/to/cases.sql")  # creates path/to/cases.csv
+```
+
+#### Return only the DataFrame (no file written)
+
+```python
+df = convert_sql_to_csv_summary("path/to/cases.sql", save_to_file=False)
+print(df.head())
+```
+
+#### Postprocessing the results of a completed H2Integrate model run
+
+```python
+from h2integrate.core.h2integrate_model import H2IntegrateModel
+from h2integrate.postprocess.sql_to_csv import convert_sql_to_csv_summary
+
+model = H2IntegrateModel("top_level_config.yaml")
+model.run()
+model.post_process()
+
+# Produce a one-row CSV summary of the scalar results
+summary_df = convert_sql_to_csv_summary(model.recorder_path)
+```
+
+#### Summarizing parallel DOE results
+
+When a DOE or parallel study is executed, H2Integrate writes one SQL file per process (e.g. `cases.sql_0`, `cases.sql_1`).
+Pass the base name and the function handles the rest:
+
+```python
+# Aggregates cases.sql_0, cases.sql_1, ... into a single DataFrame
+summary_df = convert_sql_to_csv_summary("output_dir/cases.sql")
 ```
