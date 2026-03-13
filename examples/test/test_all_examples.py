@@ -1961,7 +1961,7 @@ def test_28_iron_map_example(subtests, temp_copy_of_example):
     # Plot LCOI results from cases.sql file, save sql data to csv
     fig, ax, lcoi_layer_gdf = plot_geospatial_point_heat_map(
         case_results_fpath=cases_csv_fpath,
-        metric_to_plot="iron.LCOI (USD/kg)",
+        metric_to_plot="finance_subgroup_pig_iron.LCOP (USD/kg)",
         map_preferences={
             "figsize": (10, 8),
             "colorbar_label": "Levelized Cost of\nIron [$/kg]",
