@@ -11,7 +11,6 @@ from h2integrate.converters.wind.wind_pysam import PYSAMWindPlantPerformanceMode
 from h2integrate.storage.generic_storage_pyo import StoragePerformanceModel
 from h2integrate.transporters.generic_summer import GenericSummerPerformanceModel
 from h2integrate.converters.hopp.hopp_wrapper import HOPPComponent
-from h2integrate.converters.iron.iron_wrapper import IronComponent
 from h2integrate.converters.solar.solar_pysam import PYSAMSolarPlantPerformanceModel
 from h2integrate.finances.numpy_financial_npv import NumpyFinancialNPV
 from h2integrate.resource.wind.openmeteo_wind import OpenMeteoHistoricalWindResource
@@ -206,7 +205,6 @@ supported_models = {
     "SimpleASUCostModel": SimpleASUCostModel,
     "SimpleASUPerformanceModel": SimpleASUPerformanceModel,
     "HOPPComponent": HOPPComponent,
-    "IronComponent": IronComponent,
     "MartinIronMinePerformanceComponent": MartinIronMinePerformanceComponent,  # standalone model
     "MartinIronMineCostComponent": MartinIronMineCostComponent,  # standalone model
     "NaturalGasIronReductionPlantPerformanceComponent": NaturalGasIronReductionPlantPerformanceComponent,  # noqa: E501
