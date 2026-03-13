@@ -18,6 +18,10 @@
   associated PR. [PR 572](https://github.com/NatLabRockies/H2Integrate/pull/572)
 - Added a test and docs for sql to csv. [PR 582](https://github.com/NatLabRockies/H2Integrate/pull/582)
 - Switch to using NLR instead of NREL throughout, especially for API key usage for resource acquisition. [PR 583](https://github.com/NatLabRockies/H2Integrate/pull/583)
+- Update iron models and examples [PR 601](https://github.com/NatLabRockies/H2Integrate/pull/601)
+  - Remove outdated iron files
+  - Consolidate iron examples into a single main folder
+  - Add documentation for Rosner iron DRI and steel EAF models
 
 ### Fixes
 
