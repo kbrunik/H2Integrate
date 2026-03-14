@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Update energy conversion ratio in H2 SMR model [PR 606](https://github.com/NatLabRockies/H2Integrate/pull/606)
+
 ## 0.7.1 [March 13, 2026]
 
 ### Updates
