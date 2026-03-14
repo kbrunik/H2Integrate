@@ -145,7 +145,7 @@ class SteamMethaneReformerPerformanceModel(PerformanceModelBaseClass):
         )
 
         self.add_output(
-            "energy_conversion_ratio",
+            "total_energy_conversion_ratio",
             val=0.0,
             shape=1,
             units="kW*h/kg",
@@ -238,7 +238,7 @@ class SteamMethaneReformerPerformanceModel(PerformanceModelBaseClass):
             1 / self.fraction_of_year_simulated
         )
         outputs["unmet_hydrogen_demand"] = inputs["hydrogen_demand"] - hydrogen_out
-        outputs["energy_conversion_ratio"] = total_energy_conversion_ratio
+        outputs["total_energy_conversion_ratio"] = total_energy_conversion_ratio
 
 
 @define(kw_only=True)
