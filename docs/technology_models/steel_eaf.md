@@ -8,6 +8,14 @@ The main difference is the required feedstocks for processing the pellets.
 
 The original models were constructed in Aspen Pro and translated into Python and added to H2I. The models were developed in conjunction with [Lawrence Berkeley National Laboratory (LBNL)](https://www.lbl.gov/).
 
+The models implemented in H2I are:
+- Natural Gas Electric Arc Furnace
+  - `NaturalGasEAFPlantPerformanceComponent`
+  - `NaturalGasEAFPlantCostComponent`
+- Hydrogen Electric Arc Furnace
+  - `HydrogenEAFPlantPerformanceComponent`
+  - `HydrogenEAFPlantCostComponent`
+
 Citation:
 ```bibtex
 @article{rosner2023green,

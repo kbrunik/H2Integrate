@@ -2221,7 +2221,7 @@ def test_stimulated_geoh2(subtests, temp_copy_of_example):
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "example_folder,resource_example_folder", [("21_iron_examples/single_site_iron_mn_to_il", None)]
+    "example_folder,resource_example_folder", [("21_iron_examples/iron_dri", None)]
 )
 def test_iron_dri_eaf_example(subtests, temp_copy_of_example):
     example_folder = temp_copy_of_example

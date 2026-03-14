@@ -4,6 +4,13 @@ H2I contains two direct reduced iron (DRI) models, one is for a facility run usi
 
 The original models were constructed in Aspen Pro and translated into Python and added to H2I. The models were developed in conjunction with [Lawrence Berkeley National Laboratory (LBNL)](https://www.lbl.gov/).
 
+The models implemented in H2I are:
+- Natural Gas Electric Arc Furnace
+  - `NaturalGasIronReductionPlantPerformanceComponent`
+  - `NaturalGasIronReductionPlantCostComponent`
+- Hydrogen Electric Arc Furnace
+  - `HydrogenIronReductionPlantPerformanceComponent`
+  - `HydrogenIronReductionPlantCostComponent`
 
 Citation:
 ```bibtex
