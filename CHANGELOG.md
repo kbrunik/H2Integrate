@@ -5,6 +5,10 @@
   - Remove outdated iron files
   - Consolidate iron examples into a single main folder
   - Add documentation for Rosner iron DRI and steel EAF models
+- Add PySAM marine models [PR 607](https://github.com/NatLabRockies/H2Integrate/pull/607)
+  - Add tidal resource model
+  - Add pysam tidal performance model
+  - Add pysam marine hydrokinetic cost model
 
 ## 0.7.1 [March 13, 2026]
 

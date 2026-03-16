@@ -34,18 +34,17 @@ The top-level keys of the dictionary correspond to the Groups available in the [
 If `run_recalculate_power_curve=True`, the model rescales the power curve to match the specified device rating. The power curve will be internally scaled based on the new device rating so if the original tidal device rating is updated to a different rating, the model can use the original power curve and scale it if a new power curve is not available.
 
 Scaling is performed using:
-
-\[
+```math
 P_{\text{scaled}}(v) =
 P_{\text{original}}(v)
 \times
 \frac{\text{device\_rating}}{P_{\text{rated, original}}}
-\]
+```
 
 where:
 
-- \(P_{\text{original}}(v)\) is the original power curve value at velocity \(v\)
-- \(P_{\text{rated, original}}\) is the maximum value of the original power curve
+- $P_{\text{original}}(v)$ is the original power curve value at velocity \(v\)
+- $P_{\text{rated, original}}$ is the maximum value of the original power curve
 - `device_rating` is the rated power of the device specified in the configuration
 
 
