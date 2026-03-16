@@ -13,7 +13,7 @@ def tidal_config():
         "model_inputs": {
             "performance_parameters": {
                 "device_rating_kw": 1115,  # [kW]
-                "num_devices": 10,
+                "num_devices": 20,
                 "tidal_power_curve": [
                     (0.0, 0.0),
                     (0.1, 0.0),
@@ -185,3 +185,57 @@ def test_tidal_pysam_outputs(plant_config, tidal_config, subtests):
         assert prob.get_val("comp.operational_life", units="yr") == plant_life
     with subtests.test("replacement_schedule value"):
         assert np.all(prob.get_val("comp.replacement_schedule", units="unitless") == 0)
+
+
+@pytest.mark.unit
+def test_tidal_performance_values(plant_config, tidal_config, subtests):
+    """Add tests for values from performance model."""
+    prob = om.Problem()
+
+    tidal_resource = TidalResource(
+        plant_config=plant_config,
+        resource_config=plant_config["site"]["resources"]["tidal_resource"]["resource_parameters"],
+        driver_config={},
+    )
+
+    prob.model.add_subsystem("tidal_resource", tidal_resource, promotes=["*"])
+
+    comp = PySAMTidalPerformanceModel(
+        plant_config=plant_config,
+        tech_config=tidal_config,
+        driver_config={},
+    )
+    prob.model.add_subsystem("comp", comp, promotes=["*"])
+    prob.setup()
+    prob.run_model()
+
+    # Test output values
+    with subtests.test("electricity_out value"):
+        assert (
+            pytest.approx(np.sum(prob.get_val("comp.electricity_out", units="kW")), rel=1e-6)
+            == 60625515.492
+        )
+
+    with subtests.test("rated_electricity_production value"):
+        assert (
+            pytest.approx(prob.get_val("comp.rated_electricity_production", units="kW"), rel=1e-6)
+            == 1115 * 20
+        )
+    with subtests.test("total_electricity_produced value"):
+        assert (
+            pytest.approx(prob.get_val("comp.total_electricity_produced", units="kW*h"), rel=1e-6)
+            == 60625515.492
+        )
+    with subtests.test("capacity_factor value"):
+        assert (
+            pytest.approx(prob.get_val("comp.capacity_factor", units="unitless"), rel=1e-6)
+            == 0.310346
+        )
+
+    with subtests.test("annual_electricity_produced value"):
+        assert (
+            pytest.approx(
+                prob.get_val("comp.annual_electricity_produced", units="kW*h/yr"), rel=1e-6
+            )
+            == 60625515.492
+        )
