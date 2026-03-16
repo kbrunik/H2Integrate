@@ -79,7 +79,7 @@ def plant_config():
             "resources": {
                 "tidal_resource": {
                     "resource_parameters": {
-                        "filename": EXAMPLE_DIR / "tidal" / "Tidal_resource_timeseries.csv"
+                        "filename": EXAMPLE_DIR / "31_tidal" / "Tidal_resource_timeseries.csv"
                     }
                 }
             }

@@ -209,6 +209,7 @@ class PySAMMarineCostModel(CostModelBaseClass):
         self.cost_model.value("lib_wave_device", ref_model_num)
         if ref_model_num == "RM3" or ref_model_num == "RM5" or ref_model_num == "RM6":
             self.cost_model.value("marine_energy_tech", 0)  # Wave
+            self.cost_model.value("lib_wave_device", ref_model_num)
         elif ref_model_num == "RM1" or ref_model_num == "RM2":
             self.cost_model.value("marine_energy_tech", 1)  # Tidal
             self.cost_model.value("lib_tidal_device", ref_model_num)
