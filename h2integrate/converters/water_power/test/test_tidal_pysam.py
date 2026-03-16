@@ -239,3 +239,69 @@ def test_tidal_performance_values(plant_config, tidal_config, subtests):
             )
             == 60625515.492
         )
+
+
+@pytest.mark.unit
+### Test run_recalculate_power_curve method
+def test_recalculate_power_curve(plant_config, tidal_config, subtests):
+    prob = om.Problem()
+
+    tidal_resource = TidalResource(
+        plant_config=plant_config,
+        resource_config=plant_config["site"]["resources"]["tidal_resource"]["resource_parameters"],
+        driver_config={},
+    )
+
+    prob.model.add_subsystem("tidal_resource", tidal_resource, promotes=["*"])
+
+    tidal_config["model_inputs"]["performance_parameters"]["run_recalculate_power_curve"] = True
+    tidal_config["model_inputs"]["performance_parameters"]["device_rating_kw"] = (
+        2230  # 2x the original rating
+    )
+
+    comp = PySAMTidalPerformanceModel(
+        plant_config=plant_config,
+        tech_config=tidal_config,
+        driver_config={},
+    )
+    prob.model.add_subsystem("comp", comp, promotes=["*"])
+    prob.setup()
+    prob.run_model()
+
+    device_rating_kw = 2230  # 2x the original rating
+    original_power_curve = tidal_config["model_inputs"]["performance_parameters"][
+        "tidal_power_curve"
+    ]
+
+    with subtests.test("Recalculated power curve has same stream speeds"):
+        # Check that the recalculated power curve has the same stream speeds
+        recalculated_power_curve = comp.recalculate_power_curve(
+            device_rating_kw, original_power_curve
+        )
+        assert [point[0] for point in recalculated_power_curve] == [
+            point[0] for point in original_power_curve
+        ]
+
+    with subtests.test("Recalculated power curve values are scaled correctly"):
+        # Check that the recalculated power values are scaled correctly
+        scaling_factor = device_rating_kw / max([point[1] for point in original_power_curve])
+        expected_recalculated_power_curve = [
+            [point[0], point[1] * scaling_factor] for point in original_power_curve
+        ]
+
+        assert np.allclose(recalculated_power_curve, expected_recalculated_power_curve)
+
+    with subtests.test("correctly runs in model"):
+        # Check that the model runs with the recalculated power curve and produces expected outputs
+        assert (
+            pytest.approx(prob.get_val("comp.rated_electricity_production", units="kW"), rel=1e-6)
+            == device_rating_kw * 20
+        )
+
+    with subtests.test("annual_electricity_produced value recalculated power curve"):
+        assert (
+            pytest.approx(
+                prob.get_val("comp.annual_electricity_produced", units="kW*h/yr"), rel=1e-6
+            )
+            == 60625515.492 * 2
+        )
