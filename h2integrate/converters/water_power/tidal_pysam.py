@@ -190,8 +190,8 @@ class PySAMTidalPerformanceModel(PerformanceModelBaseClass):
             List[List[float]]: Recalculated power curve based on the device rating.
         """
         original_rated_power = max([point[1] for point in power_curve])
-        scaling_factor = device_rating_kw / original_rated_power
-        recalculated_power_curve = [[point[0], point[1] * scaling_factor] for point in power_curve]
+        scaling_factor = device_rating_kw[0] / original_rated_power
+        recalculated_power_curve = [(point[0], point[1] * scaling_factor) for point in power_curve]
 
         return recalculated_power_curve
 

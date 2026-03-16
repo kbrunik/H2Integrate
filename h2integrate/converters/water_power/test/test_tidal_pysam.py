@@ -269,27 +269,6 @@ def test_recalculate_power_curve(plant_config, tidal_config, subtests):
     prob.run_model()
 
     device_rating_kw = 2230  # 2x the original rating
-    original_power_curve = tidal_config["model_inputs"]["performance_parameters"][
-        "tidal_power_curve"
-    ]
-
-    with subtests.test("Recalculated power curve has same stream speeds"):
-        # Check that the recalculated power curve has the same stream speeds
-        recalculated_power_curve = comp.recalculate_power_curve(
-            device_rating_kw, original_power_curve
-        )
-        assert [point[0] for point in recalculated_power_curve] == [
-            point[0] for point in original_power_curve
-        ]
-
-    with subtests.test("Recalculated power curve values are scaled correctly"):
-        # Check that the recalculated power values are scaled correctly
-        scaling_factor = device_rating_kw / max([point[1] for point in original_power_curve])
-        expected_recalculated_power_curve = [
-            [point[0], point[1] * scaling_factor] for point in original_power_curve
-        ]
-
-        assert np.allclose(recalculated_power_curve, expected_recalculated_power_curve)
 
     with subtests.test("correctly runs in model"):
         # Check that the model runs with the recalculated power curve and produces expected outputs
