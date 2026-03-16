@@ -210,8 +210,8 @@ class SteamMethaneReformerPerformanceModel(PerformanceModelBaseClass):
         hydrogen_out = np.minimum.reduce([hydrogen_out_ng, hydrogen_out_elec])
 
         outputs["hydrogen_out"] = hydrogen_out
-        outputs["natural_gas_consumed"] = natural_gas_consumed
-        outputs["electricity_consumed"] = electricity_consumed
+        outputs["natural_gas_consumed"] = hydrogen_out * natural_gas_usage_mmbtu_per_kg
+        outputs["electricity_consumed"] = hydrogen_out * electricity_usage_kWh_per_kg
 
         outputs["rated_hydrogen_production"] = system_capacity_kg_per_hour  # kg/h
 
