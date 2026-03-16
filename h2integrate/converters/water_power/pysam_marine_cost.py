@@ -191,8 +191,9 @@ class PySAMMarineCostModel(CostModelBaseClass):
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
         # Assign
         number_devices = inputs["num_devices"][0]
-        self.cost_model.value("device_rated_power", inputs["device_rating"])
-        self.cost_model.value("system_capacity", inputs["device_rating"] * number_devices)
+        device_rating = inputs["device_rating"][0]
+        self.cost_model.value("device_rated_power", device_rating)
+        self.cost_model.value("system_capacity", device_rating * number_devices)
 
         if number_devices < self.config.number_rows:
             raise Exception("number_of_rows exceeds num_devices")

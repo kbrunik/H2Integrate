@@ -215,9 +215,9 @@ class PySAMTidalPerformanceModel(PerformanceModelBaseClass):
             self.system_model.value("tidal_power_curve", recalculated_power_curve)
 
         # calculate system capacity
-        system_capacity_kw = inputs["num_devices"] * inputs["device_rating"]
+        system_capacity_kw = inputs["num_devices"][0] * inputs["device_rating"][0]
         self.system_model.value("system_capacity", system_capacity_kw)
-        self.system_model.value("number_devices", inputs["num_devices"])
+        self.system_model.value("number_devices", inputs["num_devices"][0])
 
         # run the model
         self.system_model.execute(0)
