@@ -38,7 +38,7 @@ Scaling is performed using:
 $$P_{\text{scaled}}(v) =
 P_{\text{original}}(v)
 \times
-\frac{\text{device\_rating}}{P_{\text{rated, original}}}$$
+\frac{\text{device_rating}}{P_{\text{rated, original}}}$$
 
 where:
 
