@@ -50,19 +50,24 @@ def tidal_config():
                     (3.2, 1085.3700),
                     (3.3, 1055.7300),
                 ],
-                "pysam_options": {
-                    "MHKTidal": {
-                        "loss_array_spacing": 0.0,
-                        "loss_resource_overprediction": 0.0,
-                        "loss_transmission": 0.0,
-                        "loss_downtime": 0.0,
-                        "loss_additional": 0.0,
-                    }
-                },
             }
         }
     }
     return config
+
+
+@pytest.fixture
+def pysam_options():
+    pysam_options = {
+        "MHKTidal": {
+            "loss_array_spacing": 0.0,
+            "loss_resource_overprediction": 0.0,
+            "loss_transmission": 0.0,
+            "loss_downtime": 0.0,
+            "loss_additional": 0.0,
+        }
+    }
+    return pysam_options
 
 
 @pytest.fixture
@@ -89,7 +94,7 @@ def plant_config():
 
 
 @pytest.mark.unit
-def test_tidal_pysam_outputs(plant_config, tidal_config, subtests):
+def test_tidal_pysam_outputs(plant_config, tidal_config, pysam_options, subtests):
     prob = om.Problem()
 
     tidal_resource = TidalResource(
@@ -100,6 +105,7 @@ def test_tidal_pysam_outputs(plant_config, tidal_config, subtests):
 
     prob.model.add_subsystem("tidal_resource", tidal_resource, promotes=["*"])
 
+    tidal_config["model_inputs"]["performance_parameters"]["pysam_options"] = pysam_options
     comp = PySAMTidalPerformanceModel(
         plant_config=plant_config,
         tech_config=tidal_config,
@@ -188,7 +194,7 @@ def test_tidal_pysam_outputs(plant_config, tidal_config, subtests):
 
 
 @pytest.mark.unit
-def test_tidal_performance_values(plant_config, tidal_config, subtests):
+def test_tidal_performance_values(plant_config, tidal_config, pysam_options, subtests):
     """Add tests for values from performance model."""
     prob = om.Problem()
 
@@ -200,6 +206,7 @@ def test_tidal_performance_values(plant_config, tidal_config, subtests):
 
     prob.model.add_subsystem("tidal_resource", tidal_resource, promotes=["*"])
 
+    tidal_config["model_inputs"]["performance_parameters"]["pysam_options"] = pysam_options
     comp = PySAMTidalPerformanceModel(
         plant_config=plant_config,
         tech_config=tidal_config,
@@ -243,7 +250,7 @@ def test_tidal_performance_values(plant_config, tidal_config, subtests):
 
 @pytest.mark.unit
 ### Test run_recalculate_power_curve method
-def test_recalculate_power_curve(plant_config, tidal_config, subtests):
+def test_recalculate_power_curve(plant_config, tidal_config, pysam_options, subtests):
     prob = om.Problem()
 
     tidal_resource = TidalResource(
@@ -254,6 +261,7 @@ def test_recalculate_power_curve(plant_config, tidal_config, subtests):
 
     prob.model.add_subsystem("tidal_resource", tidal_resource, promotes=["*"])
 
+    tidal_config["model_inputs"]["performance_parameters"]["pysam_options"] = pysam_options
     tidal_config["model_inputs"]["performance_parameters"]["run_recalculate_power_curve"] = True
     tidal_config["model_inputs"]["performance_parameters"]["device_rating_kw"] = (
         2230  # 2x the original rating
@@ -283,4 +291,60 @@ def test_recalculate_power_curve(plant_config, tidal_config, subtests):
                 prob.get_val("comp.annual_electricity_produced", units="kW*h/yr"), rel=1e-6
             )
             == 60625515.492 * 2
+        )
+
+
+@pytest.mark.unit
+def test_tidal_default_model(plant_config, tidal_config, subtests):
+    """Add tests for values from performance model."""
+    prob = om.Problem()
+
+    tidal_resource = TidalResource(
+        plant_config=plant_config,
+        resource_config=plant_config["site"]["resources"]["tidal_resource"]["resource_parameters"],
+        driver_config={},
+    )
+
+    prob.model.add_subsystem("tidal_resource", tidal_resource, promotes=["*"])
+
+    tidal_config["model_inputs"]["performance_parameters"]["create_model_from"] = "default"
+    comp = PySAMTidalPerformanceModel(
+        plant_config=plant_config,
+        tech_config=tidal_config,
+        driver_config={},
+    )
+    prob.model.add_subsystem("comp", comp, promotes=["*"])
+    prob.setup()
+    prob.run_model()
+
+    # Test output values
+    with subtests.test("electricity_out value"):
+        assert (
+            pytest.approx(np.sum(prob.get_val("comp.electricity_out", units="kW")), rel=1e-6)
+            == 56381729.40755999
+        )
+
+    # test that it correctly adds the number of devices (overwriting PySAM json defaults)
+    with subtests.test("rated_electricity_production value"):
+        assert (
+            pytest.approx(prob.get_val("comp.rated_electricity_production", units="kW"), rel=1e-6)
+            == 1115 * 20
+        )
+    with subtests.test("total_electricity_produced value"):
+        assert (
+            pytest.approx(prob.get_val("comp.total_electricity_produced", units="kW*h"), rel=1e-6)
+            == 56381729.40755999
+        )
+    with subtests.test("capacity_factor value"):
+        assert (
+            pytest.approx(prob.get_val("comp.capacity_factor", units="unitless"), rel=1e-6)
+            == 0.28862199
+        )
+
+    with subtests.test("annual_electricity_produced value"):
+        assert (
+            pytest.approx(
+                prob.get_val("comp.annual_electricity_produced", units="kW*h/yr"), rel=1e-6
+            )
+            == 56381729.40755999
         )
