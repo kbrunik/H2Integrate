@@ -81,21 +81,14 @@ class StoragePerformanceModelConfig(BaseConfig):
         it calculates `charge_efficiency` and `discharge_efficiency` as the square root
         of `round_trip_efficiency`.
         """
-        if self.round_trip_efficiency is not None:
-            if self.charge_efficiency is not None or self.discharge_efficiency is not None:
-                raise ValueError(
-                    "Exactly one of the following sets of parameters must be set: (a) "
-                    "`round_trip_efficiency`, or (b) both `charge_efficiency` "
-                    "and `discharge_efficiency`."
-                )
-
+        if (self.round_trip_efficiency is not None) and (
+            self.charge_efficiency is None and self.discharge_efficiency is None
+        ):
             # Calculate charge and discharge efficiencies from round-trip efficiency
             self.charge_efficiency = np.sqrt(self.round_trip_efficiency)
             self.discharge_efficiency = np.sqrt(self.round_trip_efficiency)
-        elif self.charge_efficiency is not None and self.discharge_efficiency is not None:
-            # Ensure both charge and discharge efficiencies are provided
-            pass
-        else:
+            self.round_trip_efficiency = None
+        if self.charge_efficiency is None or self.discharge_efficiency is None:
             raise ValueError(
                 "Exactly one of the following sets of parameters must be set: (a) "
                 "`round_trip_efficiency`, or (b) both `charge_efficiency` "
@@ -495,12 +488,6 @@ class StoragePerformanceModel(PerformanceModelBaseClass):
         soc_max = self.config.max_charge_fraction
         soc_min = self.config.min_charge_fraction
 
-        # max_charge_input / max_discharge_input are the hardware rate limits
-        # expressed in *pre-efficiency* rate units so they can be compared
-        # directly against the SOC headroom and the raw command magnitude.
-        max_charge_input = charge_rate / charge_eff
-        max_discharge_input = discharge_rate / discharge_eff
-
         commands = np.asarray(storage_dispatch_commands, dtype=float)
         soc = float(self.current_soc)
 
@@ -514,23 +501,34 @@ class StoragePerformanceModel(PerformanceModelBaseClass):
                 # Clip to the most restrictive limit, then apply efficiency.
                 # max(0, ...) guards against negative headroom when SOC
                 # slightly exceeds soc_max.
-                actual_charge = max(0.0, min(headroom, max_charge_input, -cmd)) * charge_eff
+                # correct headroom to not include charge_eff.
+                actual_charge = max(0.0, min(headroom / charge_eff, charge_rate, -cmd)) * charge_eff
 
                 # Update SOC (actual_charge is in post-efficiency units)
                 soc += actual_charge / storage_capacity
-                storage_commodity_out_timesteps[t] = -actual_charge
+
+                # Update the amount of commodity used to charge from the input stream
+                # If charge_eff<1, more commodity is pulled from the input stream than
+                # the commodity that goes into the storage.
+                storage_commodity_out_timesteps[t] = -actual_charge / charge_eff
             else:
                 # --- Discharging ---
                 # headroom: how much commodity can still be drawn before
                 # hitting the minimum SOC, expressed as a rate.
                 headroom = (soc - soc_min) * storage_capacity / self.dt_hr
 
-                # Clip and apply discharge efficiency.
-                actual_discharge = max(0.0, min(headroom, max_discharge_input, cmd)) * discharge_eff
+                # Clip to the most restrictive limit without applied efficiency.
+                # Discharge efficiency losses occur as energy leaves storage.
+                actual_discharge = max(
+                    0.0, min(headroom, discharge_rate / discharge_eff, cmd / discharge_eff)
+                )
 
-                # Update SOC (actual_discharge is in post-efficiency units)
+                # Update SOC (actual_discharge is before efficiency losses are applied.)
                 soc -= actual_discharge / storage_capacity
-                storage_commodity_out_timesteps[t] = actual_discharge
+
+                # If discharge_eff<1, then less commodity is output from the storage
+                # than the commodity discharged from storage
+                storage_commodity_out_timesteps[t] = actual_discharge * discharge_eff
 
             soc_timesteps[t] = soc * 100.0
 

@@ -6,14 +6,13 @@
   - Remove outdated iron files
   - Consolidate iron examples into a single main folder
   - Add documentation for Rosner iron DRI and steel EAF models
-<<<<<<< pysam_tidal
+- Breaks out pyomo controller simulation code from base class to individual controllers. [PR 587](https://github.com/NatLabRockies/H2Integrate/pull/587)
+- Add tests for non-one valued charge, discharge, and round-trip efficiencies for the open-loop demand controller [PR 610](https://github.com/NatLabRockies/H2Integrate/pull/610)
+- Updated the `StorageAutoSizingModel` and `PassThroughOpenLoopController` so that `commodity_set_point` is used as the storage dispatch command [PR 608](https://github.com/NatLabRockies/H2Integrate/pull/608)
 - Add PySAM marine models [PR 607](https://github.com/NatLabRockies/H2Integrate/pull/607)
   - Add tidal resource model
   - Add pysam tidal performance model
   - Add pysam marine hydrokinetic cost model
-=======
-- Breaks out pyomo controller simulation code from base class to individual controllers. [PR 587](https://github.com/NatLabRockies/H2Integrate/pull/587)
->>>>>>> develop
 
 ## 0.7.1 [March 13, 2026]
 
@@ -41,6 +40,7 @@
 - Fixed a bug in the discrete variable instantiation within the iron processing stack that caused a failure with OpenMDAO v3.43 [PR 595](https://github.com/NatLabRockies/H2Integrate/pull/595)
 - Fixed a bug in model setup where transporters were added to the system at the end of the system instead after their source [PR 591](https://github.com/NatLabRockies/H2Integrate/pull/591)
 - Fixed a bug in example 1 (steel) where a cable was included between the combiner to steel, but steel uses an internal grid connection [PR 591](https://github.com/NatLabRockies/H2Integrate/pull/591)
+- Fixed a bug in charge and discharge efficiency handling in `StoragePerformanceModel` [PR 600](https://github.com/NatLabRockies/H2Integrate/pull/600)
 
 ## 0.7 [March 3, 2026]
 
