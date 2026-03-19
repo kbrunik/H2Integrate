@@ -6,7 +6,7 @@ import PySAM.TidalFileReader as tidalfile
 from attrs import field, define
 
 from h2integrate.core.utilities import BaseConfig
-from h2integrate.resource.utilities.file_tools import check_resource_dir
+from h2integrate.core.file_utils import get_path, find_file
 
 
 @define(kw_only=True)
@@ -76,10 +76,11 @@ class TidalResource(om.ExplicitComponent):
     def compute(self, inputs, outputs):
         # Read the CSV file
         # Check if the file exists
-        resource_dir = Path(self.config.resource_filename).parent
-        resource_dir = check_resource_dir(resource_dir=Path(self.config.resource_dir))
 
-        filename = resource_dir / self.config.resource_filename
+        resource_dir = get_path(self.config.resource_dir)
+        filename = find_file(self.config.resource_filename, resource_dir)
+
+        # filename = resource_dir / self.config.resource_filename
 
         tidalfile_model = tidalfile.new()
         # Load resource file
