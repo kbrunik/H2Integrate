@@ -50,7 +50,6 @@ class TidalResource(om.ExplicitComponent):
         self.options.declare("plant_config", types=dict)
         self.options.declare("resource_config", types=dict)
         self.options.declare("driver_config", types=dict)
-        # self.options.declare("filename", types=str)
 
     def setup(self):
         # Define inputs and outputs

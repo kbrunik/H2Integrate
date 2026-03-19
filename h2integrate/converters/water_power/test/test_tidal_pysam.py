@@ -295,7 +295,7 @@ def test_recalculate_power_curve(plant_config, tidal_config, pysam_options, subt
 
 
 @pytest.mark.unit
-def test_tidal_default_model(plant_config, tidal_config, subtests):
+def test_tidal_default_model(plant_config, subtests):
     """Add tests for values from performance model."""
     prob = om.Problem()
 
@@ -307,7 +307,15 @@ def test_tidal_default_model(plant_config, tidal_config, subtests):
 
     prob.model.add_subsystem("tidal_resource", tidal_resource, promotes=["*"])
 
-    tidal_config["model_inputs"]["performance_parameters"]["create_model_from"] = "default"
+    tidal_config = {
+        "model_inputs": {
+            "performance_parameters": {
+                "create_model_from": "default",
+                "num_devices": 20,
+                "device_rating_kw": 1115,
+            }
+        }
+    }
     comp = PySAMTidalPerformanceModel(
         plant_config=plant_config,
         tech_config=tidal_config,

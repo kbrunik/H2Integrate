@@ -11,7 +11,7 @@ technologies:
         device_rating_kw: 1115.0
         num_devices: 20
       performance_parameters:
-        tidal_power_curve:
+        tidal_power_curve:  # [tide_velocity (m/s), power (kW)]
           - [0.000000, 0.000000]
           - [0.100000, 0.000000]
           - [0.200000, 0.000000]
@@ -54,7 +54,7 @@ technologies:
             loss_downtime: 0.0
             loss_additional: 0.0
       cost_parameters:
-        reference_model_number: 1
+        reference_model_number: 1  # 1 is for a Tidal Current Turbine
         water_depth: 100
         distance_to_shore: 80
         number_rows: 2

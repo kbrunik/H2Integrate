@@ -22,7 +22,7 @@ class PySAMMarineCostConfig(CostModelBaseConfig):
         device_spacing (float): Spacing between devices in a row in meters.
         row_spacing (float): Spacing between rows in meters.
         cable_system_overbuild: Cable system overbuild percentage.
-        pysam_options (dict, optional): dictionary of MhkCosts input parameters with
+        pysam_cost_options (dict, optional): dictionary of MhkCosts input parameters with
             top-level keys corresponding to the different MhkCosts variable groups.
             (please refer to MhkCosts documentation
             `here <https://nrel-pysam.readthedocs.io/en/main/modules/MhkCosts.html>`__
@@ -53,41 +53,44 @@ class PySAMMarineCostConfig(CostModelBaseConfig):
     device_spacing: float = field(validator=gt_zero)
     row_spacing: float = field(validator=gt_zero)
     cable_system_overbuild: float = field(validator=range_val(0, 100))
-    pysam_options: dict = field(default={})
+    pysam_cost_options: dict = field(default={})
     cost_year: int = field(
         default=2022, converter=int, validator=must_equal(2022)
     )  # TODO update based on feedback from SAM team
 
     def __attrs_post_init__(self):
-        # if pysam_options is not an empty dictionary
-        if not self.pysam_options:
-            self.check_pysam_options()
+        # if pysam_cost_options is not an empty dictionary
+        if not self.pysam_cost_options:
+            self.check_pysam_cost_options()
 
-    def check_pysam_options(self):
-        """Checks that top-level keys of pysam_options dictionary are valid and that
-        system capacity is not given in pysam_options.
+    def check_pysam_cost_options(self):
+        """Checks that top-level keys of pysam_cost_options dictionary are valid and that
+        system capacity is not given in pysam_cost_options.
 
         Raises:
-           ValueError: if top-level keys of pysam_options are not valid.
-           ValueError: if device_rated_power is provide in pysam_options["MHKCosts"]
+           ValueError: if top-level keys of pysam_cost_options are not valid.
+           ValueError: if device_rated_power is provide in pysam_cost_options["MHKCosts"]
         """
         valid_groups = [
             "MHKCosts",
         ]
-        if bool(self.pysam_options):
-            invalid_groups = [k for k in self.pysam_options if k not in valid_groups]
+        if bool(self.pysam_cost_options):
+            invalid_groups = [k for k in self.pysam_cost_options if k not in valid_groups]
             if len(invalid_groups) > 0:
                 msg = (
-                    f"Invalid group(s) found in pysam_options: {invalid_groups}. "
+                    f"Invalid group(s) found in pysam_cost_options: {invalid_groups}. "
                     f"Valid groups are: {valid_groups}."
                 )
                 raise ValueError(msg)
 
-            if self.pysam_options.get("MHKCosts", {}).get("device_rated_power", None) is not None:
+            if (
+                self.pysam_cost_options.get("MHKCosts", {}).get("device_rated_power", None)
+                is not None
+            ):
                 msg = (
-                    "Please do not specify device_rated_power in the pysam_options dictionary. "
-                    "The device rated power should be set with the 'device_rating' "
-                    "in the cost parameter."
+                    "Please do not specify device_rated_power in the pysam_cost_options "
+                    "dictionary. The device rated power should be set with the "
+                    "'device_rating' in the cost parameter."
                 )
                 raise ValueError(msg)
         return
@@ -124,13 +127,13 @@ class PySAMMarineCostConfig(CostModelBaseConfig):
         for key in cost_keys_map:
             design_dict["MHKCosts"][f"{key}_method"] = 2  # used modeled values
             design_dict["MHKCosts"][f"{key}_input"] = 0
-            if self.pysam_options.get("MHKCosts", {}).get(f"{key}_input", None) is not None:
-                design_dict["MHKCosts"][f"{key}_method"] = self.pysam_options.get("MHKCosts").get(
-                    f"{key}_input"
-                )
-                design_dict["MHKCosts"][f"{key}_input"] = self.pysam_options.get("MHKCosts").get(
-                    f"{key}_method"
-                )
+            if self.pysam_cost_options.get("MHKCosts", {}).get(f"{key}_input", None) is not None:
+                design_dict["MHKCosts"][f"{key}_method"] = self.pysam_cost_options.get(
+                    "MHKCosts"
+                ).get(f"{key}_input")
+                design_dict["MHKCosts"][f"{key}_input"] = self.pysam_cost_options.get(
+                    "MHKCosts"
+                ).get(f"{key}_method")
 
         return design_dict
 
@@ -180,8 +183,8 @@ class PySAMMarineCostModel(CostModelBaseClass):
         self.cost_model = MhkCost.new()
 
         design_dict = self.config.create_input_dict()
-        if bool(self.config.pysam_options):
-            for group, group_parameters in self.config.pysam_options.items():
+        if bool(self.config.pysam_cost_options):
+            for group, group_parameters in self.config.pysam_cost_options.items():
                 if group in design_dict:
                     design_dict[group].update(group_parameters)
                 else:

@@ -15,7 +15,7 @@ class PySAMTidalPerformanceConfig(BaseConfig):
         device_rating_kw (float): Rated power of the MHK device [kW]
         num_devices (int): Number of MHK tidal devices in the system
         tidal_power_curve (List[List[float]]): Power curve of tidal energy device as
-            function of stream speeds [kW]
+            function of stream speeds [kW]. Required if create_model_from == 'new'.
         create_model_from (str):
             - 'default': instantiate MhkTidal model from the default config 'config_name'
             - 'new': instantiate new MhkTidal model (default). Requires pysam_options.
@@ -33,7 +33,7 @@ class PySAMTidalPerformanceConfig(BaseConfig):
 
     device_rating_kw: float = field(validator=gt_zero)
     num_devices: int = field(validator=gt_zero)
-    tidal_power_curve: list[list[float]]
+    tidal_power_curve: list[list[float]] | None = field(default=None)
 
     create_model_from: str = field(
         default="new", validator=contains(["default", "new"]), converter=(str.strip, str.lower)
@@ -59,6 +59,13 @@ class PySAMTidalPerformanceConfig(BaseConfig):
             )
             raise ValueError(msg)
 
+        if self.create_model_from == "new" and self.tidal_power_curve is None:
+            msg = (
+                "To create a new MhkTidal object, please provide a "
+                "tidal_power_curve in the config."
+            )
+            raise ValueError(msg)
+
         self.check_pysam_options()
 
     def check_pysam_options(self):
@@ -68,7 +75,6 @@ class PySAMTidalPerformanceConfig(BaseConfig):
         Raises:
            ValueError: if top-level keys of pysam_options are not valid.
            ValueError: if number_devices is provided in pysam_options["MHKTidal"]
-           ValueError: if tidal_power_curve is provided in pysam_options["MHKTidal"]
         """
         valid_groups = [
             "MHKTidal",
@@ -91,14 +97,6 @@ class PySAMTidalPerformanceConfig(BaseConfig):
                 )
                 raise ValueError(msg)
 
-            if self.pysam_options.get("MHKTidal", {}).get("tidal_power_curve", None) is not None:
-                msg = (
-                    "Please do not specify tidal_power_curve in the pysam_options "
-                    "dictionary. The tidal device power curve should be set with the "
-                    "'tidal_power_curve' performance parameter."
-                )
-                raise ValueError(msg)
-
         return
 
     def create_input_dict(self):
@@ -111,7 +109,6 @@ class PySAMTidalPerformanceConfig(BaseConfig):
         design_dict = {
             "MHKTidal": {
                 "number_devices": self.num_devices,
-                "tidal_power_curve": self.tidal_power_curve,
             },
         }
 
@@ -131,11 +128,6 @@ class PySAMTidalPerformanceModel(PerformanceModelBaseClass):
 
     def setup(self):
         super().setup()
-        n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
-        self.options["tech_config"]["model_inputs"]["performance_parameters"]
-
-        ####### Add power curve recalculation? #######
-
         self.config = PySAMTidalPerformanceConfig.from_dict(
             merge_shared_inputs(self.options["tech_config"]["model_inputs"], "performance"),
             additional_cls_name=self.__class__.__name__,
@@ -145,7 +137,7 @@ class PySAMTidalPerformanceModel(PerformanceModelBaseClass):
         self.add_input(
             "tidal_velocity",
             val=0.0,
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             units="m/s",
         )
 
@@ -167,7 +159,8 @@ class PySAMTidalPerformanceModel(PerformanceModelBaseClass):
         if self.config.create_model_from == "default":
             self.system_model = MhkTidal.default(self.config.config_name)
         elif self.config.create_model_from == "new":
-            self.system_model = MhkTidal.new(self.config.config_name)
+            self.system_model = MhkTidal.new()
+            self.system_model.value("tidal_power_curve", self.config.tidal_power_curve)
 
         design_dict = self.config.create_input_dict()
         if bool(self.config.pysam_options):
@@ -206,7 +199,6 @@ class PySAMTidalPerformanceModel(PerformanceModelBaseClass):
         self.system_model.value("tidal_velocity", tidal_velocity)
 
         # recalculate power curve if specified in config
-        self.system_model.value("tidal_power_curve", self.config.tidal_power_curve)
         if self.config.run_recalculate_power_curve:
             recalculated_power_curve = self.recalculate_power_curve(
                 device_rating_kw=inputs["device_rating"],

@@ -2,6 +2,8 @@ import pytest
 import openmdao.api as om
 
 from h2integrate import EXAMPLE_DIR
+from h2integrate.resource.tidal import TidalResource
+from h2integrate.converters.water_power.tidal_pysam import PySAMTidalPerformanceModel
 from h2integrate.converters.water_power.pysam_marine_cost import PySAMMarineCostModel
 
 
@@ -175,7 +177,7 @@ def test_ref_model_number6(cost_config, plant_config, subtests):
 def test_custom_cost(cost_config, plant_config, subtests):
     prob = om.Problem()
 
-    cost_config["model_inputs"]["cost_parameters"]["pysam_options"] = {
+    cost_config["model_inputs"]["cost_parameters"]["pysam_cost_options"] = {
         "MHKCosts": {
             "structural_assembly_cost_input": 20,  # $/kw
             "structural_assembly_cost_method": 0,  # Enter in $/kw
@@ -191,6 +193,90 @@ def test_custom_cost(cost_config, plant_config, subtests):
     prob.setup()
 
     prob.run_model()
+
+    with subtests.test("capex is not equal to RM1 capex"):
+        assert (
+            pytest.approx(prob.get_val("cost.CapEx", units="USD"), rel=1e-6)
+            != 123902868.62743238  # Value from test_ref_model_number1 subtest [RM1 Capex]
+        )
+    with subtests.test("Adjusted RM1 Capex"):
+        assert (
+            pytest.approx(prob.get_val("cost.CapEx", units="USD"), rel=1e-6) == 122936916.35143237
+        )
+
+
+@pytest.mark.integration
+def test_performance_cost_with_pysam_options(cost_config, subtests):
+    plant_config = {
+        "plant": {
+            "plant_life": 30,
+            "simulation": {
+                "n_timesteps": 8760,
+                "dt": 3600,
+            },
+        },
+        "site": {
+            "resources": {
+                "tidal_resource": {
+                    "resource_parameters": {
+                        "filename": EXAMPLE_DIR / "31_tidal" / "Tidal_resource_timeseries.csv"
+                    }
+                }
+            }
+        },
+    }
+    prob = om.Problem()
+
+    tidal_resource = TidalResource(
+        plant_config=plant_config,
+        resource_config=plant_config["site"]["resources"]["tidal_resource"]["resource_parameters"],
+        driver_config={},
+    )
+
+    prob.model.add_subsystem("tidal_resource", tidal_resource, promotes=["*"])
+
+    tidal_config = {
+        "model_inputs": {
+            "performance_parameters": {
+                "create_model_from": "default",
+                "num_devices": 20,
+                "device_rating_kw": 1115,
+                "pysam_options": {
+                    "MHKTidal": {
+                        "loss_downtime": 10.0,
+                    }
+                },
+            }
+        }
+    }
+    comp = PySAMTidalPerformanceModel(
+        plant_config=plant_config,
+        tech_config=tidal_config,
+        driver_config={},
+    )
+    prob.model.add_subsystem("comp", comp, promotes=["*"])
+
+    cost_config["model_inputs"]["cost_parameters"]["pysam_cost_options"] = {
+        "MHKCosts": {
+            "structural_assembly_cost_input": 20,  # $/kw
+            "structural_assembly_cost_method": 0,  # Enter in $/kw
+        }
+    }
+    cost = PySAMMarineCostModel(
+        plant_config=plant_config,
+        tech_config=cost_config,
+        driver_config={},
+    )
+
+    prob.model.add_subsystem("cost", cost, promotes=["*"])
+    prob.setup()
+
+    prob.run_model()
+    with subtests.test("total_electricity_produced value"):
+        assert (
+            pytest.approx(prob.get_val("comp.total_electricity_produced", units="kW*h"), rel=1e-6)
+            == 51531688.16819879
+        )
 
     with subtests.test("capex is not equal to RM1 capex"):
         assert (
