@@ -8,7 +8,8 @@ sites:
       tidal_resource:
         resource_model: TidalResource
         resource_parameters:
-          filename: Tidal_resource_timeseries.csv
+          resource_dir: resource_files/tidal/
+          resource_filename: Tidal_resource_timeseries.csv
 # array of arrays containing left-to-right technology
 # interconnections; can support bidirectional connections
 # with the reverse definition.

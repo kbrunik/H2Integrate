@@ -6,11 +6,21 @@ import PySAM.TidalFileReader as tidalfile
 from attrs import field, define
 
 from h2integrate.core.utilities import BaseConfig
+from h2integrate.resource.utilities.file_tools import check_resource_dir
 
 
 @define(kw_only=True)
 class TidalResourceConfig(BaseConfig):
-    filename: str | Path = field()
+    """
+    Args:
+        resource_dir (str | Path, optional): Folder to save resource files to or
+        load resource files from. Defaults to "".
+        resource_filename (str, optional): Filename to save resource data to or load
+            resource data from. Defaults to None.
+    """
+
+    resource_dir: Path | str | None = field(default=None)
+    resource_filename: Path | str = field(default="")
 
 
 class TidalResource(om.ExplicitComponent):
@@ -59,17 +69,17 @@ class TidalResource(om.ExplicitComponent):
         )
         site_config = self.options["plant_config"]["site"]
 
-        self.add_input("latitude", site_config.get("latitude", 0.0), units="deg")
-        self.add_input("longitude", site_config.get("longitude", 0.0), units="deg")
+        self.add_input("latitude", site_config.get("longitude"), units="deg")
+        self.add_input("longitude", site_config.get("longitude"), units="deg")
         self.add_output("tidal_velocity", shape=8760, val=0.0, units="m/s")
 
     def compute(self, inputs, outputs):
         # Read the CSV file
-        filename = self.config.filename
-
         # Check if the file exists
-        if not Path(filename).is_file():
-            raise FileNotFoundError(f"The file '{filename}' does not exist.")
+        resource_dir = Path(self.config.resource_filename).parent
+        resource_dir = check_resource_dir(resource_dir=Path(self.config.resource_dir))
+
+        filename = resource_dir / self.config.resource_filename
 
         tidalfile_model = tidalfile.new()
         # Load resource file
@@ -81,6 +91,7 @@ class TidalResource(om.ExplicitComponent):
         hours = tidalfile_model.Outputs.hour
 
         if len(hours) < 8760:
+            # code that makes/modifies data_df
             # Set up dataframe for data manipulation
             df = pd.DataFrame()
             df["year"] = tidalfile_model.Outputs.year
@@ -118,21 +129,11 @@ class TidalResource(om.ExplicitComponent):
                 data_df = data_df.ffill()  # forward fill
 
             data_df = data_df.reset_index()
-            dic = {}
+            outputs["tidal_velocity"] = data_df["tidal_velocity"]
+            return
 
-            # Extract outputs
-            dic["tidal_velocity"] = data_df["tidal_velocity"]
-            dic["year"] = data_df["index"].dt.year
-            dic["month"] = data_df["index"].dt.month
-            dic["day"] = data_df["index"].dt.day
-            dic["hour"] = data_df["index"].dt.hour
-            dic["minute"] = data_df["index"].dt.minute
+        if len(hours) == 8760:
+            outputs["tidal_velocity"] = tidalfile_model.Outputs.tidal_velocity
+            return
 
-        elif len(hours) == 8760:
-            dic = {}
-            # Extract outputs
-            dic["tidal_velocity"] = tidalfile_model.Outputs.tidal_velocity
-        else:
-            raise ValueError("Resource time-series cannot be subhourly.")
-
-        outputs["tidal_velocity"] = dic["tidal_velocity"]
+        raise ValueError("Resource time-series cannot be subhourly.")

@@ -1,7 +1,6 @@
 import pytest
 import openmdao.api as om
 
-from h2integrate import EXAMPLE_DIR
 from h2integrate.resource.tidal import TidalResource
 from h2integrate.converters.water_power.tidal_pysam import PySAMTidalPerformanceModel
 from h2integrate.converters.water_power.pysam_marine_cost import PySAMMarineCostModel
@@ -18,13 +17,16 @@ def plant_config():
             },
         },
         "site": {
+            "latitude": 47.5233,
+            "longitude": -92.5366,
             "resources": {
                 "tidal_resource": {
                     "resource_parameters": {
-                        "filename": EXAMPLE_DIR / "tidal" / "Tidal_resource_timeseries.csv"
+                        "resource_dir": "resource_files/tidal/",
+                        "resource_filename": "Tidal_resource_timeseries.csv",
                     }
                 }
-            }
+            },
         },
     }
     return plant_config
@@ -206,25 +208,7 @@ def test_custom_cost(cost_config, plant_config, subtests):
 
 
 @pytest.mark.integration
-def test_performance_cost_with_pysam_options(cost_config, subtests):
-    plant_config = {
-        "plant": {
-            "plant_life": 30,
-            "simulation": {
-                "n_timesteps": 8760,
-                "dt": 3600,
-            },
-        },
-        "site": {
-            "resources": {
-                "tidal_resource": {
-                    "resource_parameters": {
-                        "filename": EXAMPLE_DIR / "31_tidal" / "Tidal_resource_timeseries.csv"
-                    }
-                }
-            }
-        },
-    }
+def test_performance_cost_with_pysam_options(plant_config, cost_config, subtests):
     prob = om.Problem()
 
     tidal_resource = TidalResource(

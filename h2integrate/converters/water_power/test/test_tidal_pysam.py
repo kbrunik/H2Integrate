@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 import openmdao.api as om
 
-from h2integrate import EXAMPLE_DIR
 from h2integrate.resource.tidal import TidalResource
 from h2integrate.converters.water_power.tidal_pysam import PySAMTidalPerformanceModel
 
@@ -81,13 +80,16 @@ def plant_config():
             },
         },
         "site": {
+            "latitude": 47.5233,
+            "longitude": -92.5366,
             "resources": {
                 "tidal_resource": {
                     "resource_parameters": {
-                        "filename": EXAMPLE_DIR / "31_tidal" / "Tidal_resource_timeseries.csv"
+                        "resource_dir": "resource_files/tidal/",
+                        "resource_filename": "Tidal_resource_timeseries.csv",
                     }
                 }
-            }
+            },
         },
     }
     return plant_config
