@@ -144,9 +144,9 @@ def test_oae_standard_outputs(driver_config, plant_config, tech_config, subtests
     # Run the model
     prob.run_model()
 
-    with subtests.test("co2 captured mtpy == annual co2 produced"):
+    with subtests.test("co2 captured == annual co2 produced"):
         assert (
-            pytest.approx(prob.get_val("comp.co2_capture_mtpy", units="t/yr")[0], rel=1e-6)
+            pytest.approx(prob.get_val("comp.co2_capture", units="t/yr")[0], rel=1e-6)
             == prob.get_val("comp.annual_co2_produced", units="t/yr")[0]
         )
 
@@ -159,7 +159,7 @@ def test_oae_standard_outputs(driver_config, plant_config, tech_config, subtests
     with subtests.test("CF calculated properly"):
         assert (
             pytest.approx(annual_co2_from_cf_calc[0], rel=1e-6)
-            == prob.get_val("comp.co2_capture_mtpy", units="t/yr")[0]
+            == prob.get_val("comp.co2_capture", units="t/yr")[0]
         )
 
 
@@ -184,8 +184,8 @@ def test_performance_model(tech_config, plant_config, driver_config):
 
     # Get output values to determine expected values
     co2_out = prob.get_val("co2_out", units="kg/h")
-    co2_capture_mtpy = prob.get_val("co2_capture_mtpy", units="t/year")
-    plant_mCC_capacity_mtph = prob.get_val("plant_mCC_capacity_mtph", units="t/h")
+    co2_capture_mtpy = prob.get_val("co2_capture", units="t/year")
+    plant_mCC_capacity_mtph = prob.get_val("plant_mCC_capacity", units="t/h")
     alkaline_seawater_flow_rate = prob.get_val("alkaline_seawater_flow_rate", units="m**3/s")
     alkaline_seawater_pH = prob.get_val("alkaline_seawater_pH", units="unitless")
     excess_acid = prob.get_val("excess_acid", units="m**3")

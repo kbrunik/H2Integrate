@@ -76,9 +76,9 @@ class DOCPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
 
     Computes:
         - co2_out: Hourly CO2 capture rate (kg/h)
-        - co2_capture_mtpy: Annual CO2 capture (t/year)
-        - total_tank_volume_m3: Total tank volume (m^3)
-        - plant_mCC_capacity_mtph: Plant carbon capture capacity (t/h)
+        - co2_capture: Annual CO2 capture (t/year)
+        - total_tank_volume: Total tank volume (m^3)
+        - plant_mCC_capacity: Plant carbon capture capacity (t/h)
     """
 
     def initialize(self):
@@ -91,13 +91,13 @@ class DOCPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
         )
         super().setup()
         self.add_output(
-            "plant_mCC_capacity_mtph",
+            "plant_mCC_capacity",
             val=0.0,
             units="t/h",
-            desc="Theoretical maximum CO₂ capture (t/h)",
+            desc="Theoretical maximum CO₂ capture",
         )
         self.add_output(
-            "total_tank_volume_m3",
+            "total_tank_volume",
             val=0.0,
             units="m**3",
         )
@@ -123,9 +123,9 @@ class DOCPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
         )
 
         outputs["co2_out"] = ed_outputs.ED_outputs["mCC"] * 1000  # kg/h
-        outputs["co2_capture_mtpy"] = max(ed_outputs.mCC_yr, 1e-6)  # Must be >0 #TODO: remove
-        outputs["total_tank_volume_m3"] = range_outputs.V_aT_max + range_outputs.V_bT_max
-        outputs["plant_mCC_capacity_mtph"] = max(range_outputs.S1["mCC"])  # TODO: remove
+        outputs["co2_capture"] = max(ed_outputs.mCC_yr, 1e-6)  # Must be >0 #TODO: remove
+        outputs["total_tank_volume"] = range_outputs.V_aT_max + range_outputs.V_bT_max
+        outputs["plant_mCC_capacity"] = max(range_outputs.S1["mCC"])  # TODO: remove
 
         outputs["rated_co2_production"] = (ed_outputs.mCC_yr_MaxPwr / 8760) * 1e3
         outputs["total_co2_produced"] = outputs["co2_out"].sum()
@@ -170,16 +170,16 @@ class DOCCostModel(MarineCarbonCaptureCostBaseClass):
         super().setup()
 
         self.add_input(
-            "total_tank_volume_m3",
+            "total_tank_volume",
             val=0.0,
             units="m**3",
         )
 
         self.add_input(
-            "plant_mCC_capacity_mtph",  # TODO: replace with rated_co2_production
+            "plant_mCC_capacity",  # TODO: replace with rated_co2_production
             val=0.0,
             units="t/h",
-            desc="Theoretical plant maximum CO₂ capture (t/h)",
+            desc="Theoretical plant maximum CO₂ capture",
         )
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
@@ -189,11 +189,11 @@ class DOCCostModel(MarineCarbonCaptureCostBaseClass):
         res = echem_mcc.electrodialysis_cost_model(
             echem_mcc.ElectrodialysisCostInputs(
                 electrodialysis_inputs=ED_inputs,
-                mCC_yr=inputs["co2_capture_mtpy"],  # TODO: replace with annual_co2_produced
-                total_tank_volume=inputs["total_tank_volume_m3"],
+                mCC_yr=inputs["co2_capture"],  # TODO: replace with annual_co2_produced
+                total_tank_volume=inputs["total_tank_volume"],
                 infrastructure_type=self.config.infrastructure_type,
                 max_theoretical_mCC=inputs[
-                    "plant_mCC_capacity_mtph"
+                    "plant_mCC_capacity"
                 ],  # TODO: replaced with rated_co2_production
             )
         )

@@ -158,9 +158,9 @@ def test_doc_standard_outputs(driver_config, plant_config, tech_config, subtests
     int(plant_config["plant"]["plant_life"])
     int(plant_config["plant"]["simulation"]["n_timesteps"])
 
-    with subtests.test("co2 captured mtpy == annual co2 produced"):
+    with subtests.test("co2 captured == annual co2 produced"):
         assert (
-            pytest.approx(prob.get_val("comp.co2_capture_mtpy", units="t/yr")[0], rel=1e-6)
+            pytest.approx(prob.get_val("comp.co2_capture", units="t/yr")[0], rel=1e-6)
             == prob.get_val("comp.annual_co2_produced", units="t/yr")[0]
         )
 
@@ -173,7 +173,7 @@ def test_doc_standard_outputs(driver_config, plant_config, tech_config, subtests
     with subtests.test("CF calculated properly"):
         assert (
             pytest.approx(annual_co2_from_cf_calc[0], rel=1e-6)
-            == prob.get_val("comp.co2_capture_mtpy", units="t/yr")[0]
+            == prob.get_val("comp.co2_capture", units="t/yr")[0]
         )
 
 
@@ -202,9 +202,9 @@ def test_performance_model(tech_config, plant_config, driver_config):
 
     # Additional asserts for output values
     co2_out = prob.get_val("co2_out")
-    co2_capture_mtpy = prob.get_val("co2_capture_mtpy")
-    plant_mCC_capacity_mtph = prob.get_val("plant_mCC_capacity_mtph")
-    total_tank_volume_m3 = prob.get_val("total_tank_volume_m3")
+    co2_capture_mtpy = prob.get_val("co2_capture")
+    plant_mCC_capacity_mtph = prob.get_val("plant_mCC_capacity")
+    total_tank_volume_m3 = prob.get_val("total_tank_volume")
 
     # Assert values (allowing for small numerical tolerance)
     assert_near_equal(np.linalg.norm(co2_out), 11394970.06218, tolerance=1e-1)

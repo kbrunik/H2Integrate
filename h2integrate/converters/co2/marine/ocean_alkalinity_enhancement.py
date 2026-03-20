@@ -62,8 +62,8 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
         MarineCarbonCapturePerformanceBaseClass
 
     Computes:
-        - co2_out: Hourly CO₂ capture rate (kg/h).
-        - co2_capture_mtpy: Annual CO₂ captured in metric tons per year.
+        - co2_out: Hourly CO₂ capture rate.
+        - co2_capture: Annual CO₂ captured in metric tons per year.
 
     Notes:
         This component requires the mcm.capture.echem_oae module for calculations.
@@ -81,17 +81,17 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
         n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
 
         self.add_output(
-            "plant_mCC_capacity_mtph",
+            "plant_mCC_capacity",
             val=0.0,
             units="t/h",
-            desc="Theoretical maximum CO₂ capture (t/h)",
+            desc="Theoretical maximum CO₂ capture",
         )
         self.add_output(
             "alkaline_seawater_flow_rate",
             shape=n_timesteps,
             val=0.0,
             units="m**3/s",
-            desc="Alkaline seawater flow rate (m³/s)",
+            desc="Alkaline seawater flow rate",
         )
         self.add_output(
             "alkaline_seawater_pH",
@@ -126,57 +126,57 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
             val=0.0,
             shape=n_timesteps,
             units="C",
-            desc="Temperature of the alkaline seawater (°C)",
+            desc="Temperature of the alkaline seawater",
         )
         self.add_output(
             "excess_acid",
             val=0.0,
             shape=n_timesteps,
             units="m**3",
-            desc="Excess acid produced (m³)",
+            desc="Excess acid produced",
         )
         self.add_output(
             "mass_sellable_product",
             val=0.0,
             units="t/year",
-            desc="Mass of sellable product (acid or RCA) produced per year (tonnes)",
+            desc="Mass of sellable product (acid or RCA) produced per year",
         )
         self.add_output(
             "value_products",
             val=0.0,
             units="USD/year",
-            desc="Value of products (acid or RCA) (USD/year)",
+            desc="Value of products (acid or RCA)",
         )
         self.add_output(
             "mass_acid_disposed",
             val=0.0,
             units="t/year",
-            desc="Mass of acid disposed per year (tonnes)",
+            desc="Mass of acid disposed per year",
         )
         self.add_output(
             "cost_acid_disposal",
             val=0.0,
             units="USD/year",
-            desc="Cost of acid disposal (USD/year)",
+            desc="Cost of acid disposal",
         )
         self.add_output(
             "based_added_seawater_max_power",
             val=0.0,
             units="mol/year",
-            desc="Maximum power for base added seawater per year (mol/year)",
+            desc="Maximum power for base added seawater per year",
         )
         self.add_output(
             "mass_rca",
             val=0.0,
             units="g",
-            desc="Mass of RCA tumbler slurry produced (grams)",
+            desc="Mass of RCA tumbler slurry produced",
         )
         self.add_output(
             "unused_energy",
             val=0.0,
             shape=n_timesteps,
             units="W",
-            desc="Unused energy unused by OAE system (W)",
+            desc="Unused energy unused by OAE system",
         )
 
     def compute(self, inputs, outputs):
@@ -221,8 +221,8 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
         )  # convert from metric tons/year to kg/year
         outputs["capacity_factor"] = oae_outputs.oae_capacity_factor
 
-        outputs["co2_capture_mtpy"] = oae_outputs.M_co2est  # TODO: remove
-        outputs["plant_mCC_capacity_mtph"] = max(
+        outputs["co2_capture"] = oae_outputs.M_co2est  # TODO: remove
+        outputs["plant_mCC_capacity"] = max(
             range_outputs.S1["mass_CO2_absorbed"] / 1000
         )  # TODO: remove
         outputs["alkaline_seawater_flow_rate"] = oae_outputs.OAE_outputs["Qout"]
@@ -280,37 +280,37 @@ class OAECostModel(MarineCarbonCaptureCostBaseClass):
             "mass_sellable_product",
             val=0.0,
             units="t/year",
-            desc="Mass of sellable product (acid or RCA) produced per year (tonnes)",
+            desc="Mass of sellable product (acid or RCA) produced per year",
         )
         self.add_input(
             "value_products",
             val=0.0,
             units="USD/year",
-            desc="Value of products (acid or RCA) (USD/year)",
+            desc="Value of products (acid or RCA)",
         )
         self.add_input(
             "mass_acid_disposed",
             val=0.0,
             units="t/year",
-            desc="Mass of acid disposed per year (tonnes)",
+            desc="Mass of acid disposed per year",
         )
         self.add_input(
             "cost_acid_disposal",
             val=0.0,
             units="USD/year",
-            desc="Cost of acid disposal (USD/year)",
+            desc="Cost of acid disposal",
         )
         self.add_input(
             "based_added_seawater_max_power",
             val=0.0,
             units="mol/year",
-            desc="Maximum power for base added seawater per year (mol/year)",
+            desc="Maximum power for base added seawater per year",
         )
         self.add_input(
             "mass_rca",
             val=0.0,
             units="g",
-            desc="Mass of RCA tumbler slurry produced (grams)",
+            desc="Mass of RCA tumbler slurry produced",
         )
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
@@ -319,7 +319,7 @@ class OAECostModel(MarineCarbonCaptureCostBaseClass):
             value_product=inputs["value_products"][0],
             waste_mass=inputs["mass_acid_disposed"][0],
             waste_disposal_cost=inputs["cost_acid_disposal"][0],
-            estimated_cdr=inputs["co2_capture_mtpy"][0],  # TODO: replace with annual_co2_produced
+            estimated_cdr=inputs["co2_capture"][0],  # TODO: replace with annual_co2_produced
             base_added_seawater_max_power=inputs["based_added_seawater_max_power"][0],
             mass_rca=inputs["mass_rca"][0],
             annual_energy_cost=0,  # Energy costs are calculated within H2I and added to LCOC calc
@@ -361,85 +361,88 @@ class OAECostAndFinancialModel(MarineCarbonCaptureCostBaseClass):
             )
         super().setup()
         n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
+        plant_life = int(self.options["plant_config"]["plant"]["plant_life"])
         self.add_input(
             "LCOE",
             val=0.0,
             units="USD/(kW*h)",
-            desc="Levelized cost of electricity (USD/kWh)",
+            desc="Levelized cost of electricity",
         )
         self.add_input(
-            "annual_energy",
+            "annual_input_electricity",
             val=0.0,
+            shape=plant_life,
             units="kW*h/year",
-            desc="Annual energy production in kWac",
+            desc="Annual energy input to the OAE",
         )
         self.add_input(
             "unused_energy",
             val=0.0,
             shape=n_timesteps,
-            units="W",
-            desc="Unused energy unused by OAE system (W)",
+            units="kW",
+            desc="Unused energy unused by OAE system",
         )
         self.add_input(
             "mass_sellable_product",
             val=0.0,
             units="t/year",
-            desc="Mass of sellable product (acid or RCA) produced per year (tonnes)",
+            desc="Mass of sellable product (acid or RCA) produced per year",
         )
         self.add_input(
             "value_products",
             val=0.0,
             units="USD/year",
-            desc="Value of products (acid or RCA) (USD/year)",
+            desc="Value of products (acid or RCA)",
         )
         self.add_input(
             "mass_acid_disposed",
             val=0.0,
             units="t/year",
-            desc="Mass of acid disposed per year (tonnes)",
+            desc="Mass of acid disposed per year",
         )
         self.add_input(
             "cost_acid_disposal",
             val=0.0,
             units="USD/year",
-            desc="Cost of acid disposal (USD/year)",
+            desc="Cost of acid disposal",
         )
         self.add_input(
             "based_added_seawater_max_power",
             val=0.0,
             units="mol/year",
-            desc="Maximum power for base added seawater per year (mol/year)",
+            desc="Maximum power for base added seawater per year",
         )
         self.add_input(
             "mass_rca",
             val=0.0,
             units="g",
-            desc="Mass of RCA tumbler slurry produced (grams)",
+            desc="Mass of RCA tumbler slurry produced",
         )
 
         self.add_output(
             "NPV",
             val=0.0,
             units="USD",
-            desc="Net Present Value of the OAE system (USD)",
+            desc="Net Present Value of the OAE system",
         )
         self.add_output(
             "carbon_credit_value",
             val=0.0,
             units="USD/t",
-            desc="Carbon credit value required to achieve NPV of zero (USD/tCO2)",
+            desc="Carbon credit value required to achieve NPV of zero",
         )
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+        """Model assume that you only pay for the energy you use for OAE."""
         annual_energy_cost_usd_yr = inputs["LCOE"] * (
-            inputs["annual_energy"] - (sum(inputs["unused_energy"]) / 1000)  # Convert W to kW
+            inputs["annual_input_electricity"][0] - (sum(inputs["unused_energy"]))
         )  # remove unused power from the annual energy cost only used power considered
         costs = echem_oae.OAECosts(
             mass_product=inputs["mass_sellable_product"][0],
             value_product=inputs["value_products"][0],
             waste_mass=inputs["mass_acid_disposed"][0],
             waste_disposal_cost=inputs["cost_acid_disposal"][0],
-            estimated_cdr=inputs["co2_capture_mtpy"][0],  # TODO: replace with annual_co2_produced
+            estimated_cdr=inputs["co2_capture"][0],  # TODO: replace with annual_co2_produced
             base_added_seawater_max_power=inputs["based_added_seawater_max_power"][0],
             mass_rca=inputs["mass_rca"][0],
             annual_energy_cost=annual_energy_cost_usd_yr[0],

@@ -50,7 +50,7 @@ class MarineCarbonCapturePerformanceBaseClass(PerformanceModelBaseClass):
         )
 
         # TODO: remove this output once finance models are updated
-        self.add_output("co2_capture_mtpy", units="t/year", desc="Annual CO₂ captured (t/year)")
+        self.add_output("co2_capture", units="t/year", desc="Annual CO₂ captured")
 
 
 class MarineCarbonCaptureCostBaseClass(CostModelBaseClass):
@@ -71,8 +71,8 @@ class MarineCarbonCaptureCostBaseClass(CostModelBaseClass):
         )
         # TODO: replaced with annual_co2_produced
         self.add_input(
-            "co2_capture_mtpy",
+            "co2_capture",
             val=0.0,
             units="t/year",
-            desc="Annual CO₂ captured (t/year)",
+            desc="Annual CO₂ captured",
         )
