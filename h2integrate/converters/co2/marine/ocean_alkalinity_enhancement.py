@@ -3,10 +3,10 @@ from mcm.capture import echem_oae
 
 from h2integrate.core.utilities import BaseConfig, merge_shared_inputs
 from h2integrate.core.validators import must_equal
-from h2integrate.converters.co2.marine.marine_carbon_capture_baseclass import (
-    MarineCarbonCaptureCostBaseClass,
-    MarineCarbonCapturePerformanceConfig,
-    MarineCarbonCapturePerformanceBaseClass,
+from h2integrate.core.model_baseclasses import (
+    CostModelBaseClass,
+    CostModelBaseConfig,
+    PerformanceModelBaseClass,
 )
 
 
@@ -25,10 +25,14 @@ def setup_ocean_alkalinity_enhancement_inputs(config):
 
 
 @define(kw_only=True)
-class OAEPerformanceConfig(MarineCarbonCapturePerformanceConfig):
+class OAEPerformanceConfig(BaseConfig):
     """Extended configuration for Ocean Alkalinity Enhancement (OAE) performance model.
 
     Attributes:
+        number_ed_min (int): Minimum number of ED units to operate.
+        number_ed_max (int): Maximum number of ED units available.
+        use_storage_tanks (bool): Flag indicating whether to use storage tanks.
+        store_hours (float): Number of hours of CO₂ storage capacity (hours).
         assumed_CDR_rate (float): Mole of CO2 per mole of NaOH (unitless).
         frac_base_flow (float): Fraction of base flow in the system (unitless).
         max_ed_system_flow_rate_m3s (float): Maximum flow rate through the ED system (m³/s).
@@ -42,6 +46,10 @@ class OAEPerformanceConfig(MarineCarbonCapturePerformanceConfig):
         save_plots (bool, optional): If true, save plots of results. Defaults to False.
     """
 
+    number_ed_min: int = field()
+    number_ed_max: int = field()
+    use_storage_tanks: bool = field()
+    store_hours: float = field()
     assumed_CDR_rate: float = field()
     frac_base_flow: float = field()
     max_ed_system_flow_rate_m3s: float = field()
@@ -55,22 +63,14 @@ class OAEPerformanceConfig(MarineCarbonCapturePerformanceConfig):
     save_plots: bool = field(default=False)
 
 
-class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
-    """OpenMDAO component for modeling Ocean Alkalinity Enhancement (OAE) performance.
-
-    Extends:
-        MarineCarbonCapturePerformanceBaseClass
-
-    Computes:
-        - co2_out: Hourly CO₂ capture rate.
-        - co2_capture: Annual CO₂ captured in metric tons per year.
-
-    Notes:
-        This component requires the mcm.capture.echem_oae module for calculations.
-    """
+class OAEPerformanceModel(PerformanceModelBaseClass):
+    """OpenMDAO component for modeling Ocean Alkalinity Enhancement (OAE) performance."""
 
     def initialize(self):
         super().initialize()
+        self.commodity = "co2"
+        self.commodity_rate_units = "kg/h"
+        self.commodity_amount_units = "kg"
 
     def setup(self):
         self.config = OAEPerformanceConfig.from_dict(
@@ -78,17 +78,17 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
             additional_cls_name=self.__class__.__name__,
         )
         super().setup()
-        n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
 
-        self.add_output(
-            "plant_mCC_capacity",
+        self.add_input(
+            "electricity_in",
             val=0.0,
-            units="t/h",
-            desc="Theoretical maximum CO₂ capture",
+            shape=self.n_timesteps,
+            units="W",
+            desc="Hourly input electricity (W)",
         )
         self.add_output(
             "alkaline_seawater_flow_rate",
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             val=0.0,
             units="m**3/s",
             desc="Alkaline seawater flow rate",
@@ -96,42 +96,42 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
         self.add_output(
             "alkaline_seawater_pH",
             val=0.0,
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             units="unitless",
             desc="pH of the alkaline seawater",
         )
         self.add_output(
             "alkaline_seawater_dic",
             val=0.0,
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             units="mol/L",
             desc="Dissolved inorganic carbon concentration in the alkaline seawater",
         )
         self.add_output(
             "alkaline_seawater_ta",
             val=0.0,
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             units="mol/L",
             desc="Total alkalinity of the alkaline seawater",
         )
         self.add_output(
             "alkaline_seawater_salinity",
             val=0.0,
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             units="ppt",
             desc="Salinity of the alkaline seawater",
         )
         self.add_output(
             "alkaline_seawater_temp",
             val=0.0,
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             units="C",
             desc="Temperature of the alkaline seawater",
         )
         self.add_output(
             "excess_acid",
             val=0.0,
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             units="m**3",
             desc="Excess acid produced",
         )
@@ -174,7 +174,7 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
         self.add_output(
             "unused_energy",
             val=0.0,
-            shape=n_timesteps,
+            shape=self.n_timesteps,
             units="W",
             desc="Unused energy unused by OAE system",
         )
@@ -220,11 +220,6 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
             oae_outputs.M_co2est * 1e3
         )  # convert from metric tons/year to kg/year
         outputs["capacity_factor"] = oae_outputs.oae_capacity_factor
-
-        outputs["co2_capture"] = oae_outputs.M_co2est  # TODO: remove
-        outputs["plant_mCC_capacity"] = max(
-            range_outputs.S1["mass_CO2_absorbed"] / 1000
-        )  # TODO: remove
         outputs["alkaline_seawater_flow_rate"] = oae_outputs.OAE_outputs["Qout"]
         outputs["alkaline_seawater_pH"] = oae_outputs.OAE_outputs["pH_f"]
         outputs["alkaline_seawater_dic"] = oae_outputs.OAE_outputs["dic_f"]
@@ -242,7 +237,7 @@ class OAEPerformanceModel(MarineCarbonCapturePerformanceBaseClass):
 
 
 @define(kw_only=True)
-class OAECostModelConfig(BaseConfig):
+class OAECostModelConfig(CostModelBaseConfig):
     """Configuration for the OAE cost model.
 
     Attributes:
@@ -252,7 +247,7 @@ class OAECostModelConfig(BaseConfig):
     cost_year: int = field(default=2024, converter=int, validator=must_equal(2024))
 
 
-class OAECostModel(MarineCarbonCaptureCostBaseClass):
+class OAECostModel(CostModelBaseClass):
     """OpenMDAO component for computing capital (CapEx) and operational (OpEx) costs of a
         ocean alkalinity enhancement (OAE) system.
 
@@ -276,6 +271,14 @@ class OAECostModel(MarineCarbonCaptureCostBaseClass):
                 additional_cls_name=self.__class__.__name__,
             )
         super().setup()
+        plant_life = int(self.options["plant_config"]["plant"]["plant_life"])
+
+        self.add_input(
+            "annual_co2_produced",
+            val=0.0,
+            shape=plant_life,
+            units="t/year",
+        )
         self.add_input(
             "mass_sellable_product",
             val=0.0,
@@ -319,7 +322,7 @@ class OAECostModel(MarineCarbonCaptureCostBaseClass):
             value_product=inputs["value_products"][0],
             waste_mass=inputs["mass_acid_disposed"][0],
             waste_disposal_cost=inputs["cost_acid_disposal"][0],
-            estimated_cdr=inputs["co2_capture"][0],  # TODO: replace with annual_co2_produced
+            estimated_cdr=inputs["annual_co2_produced"][0],
             base_added_seawater_max_power=inputs["based_added_seawater_max_power"][0],
             mass_rca=inputs["mass_rca"][0],
             annual_energy_cost=0,  # Energy costs are calculated within H2I and added to LCOC calc
@@ -332,7 +335,7 @@ class OAECostModel(MarineCarbonCaptureCostBaseClass):
         outputs["OpEx"] = results["Annual Operating Cost ($/yr)"]
 
 
-class OAECostAndFinancialModel(MarineCarbonCaptureCostBaseClass):
+class OAECostAndFinancialModel(CostModelBaseClass):
     """OpenMDAO component for calculating costs and financial metrics of an
         Ocean Alkalinity Enhancement (OAE) system.
     The financial model calculates the carbon credit value that would be required to achieve a
@@ -362,6 +365,14 @@ class OAECostAndFinancialModel(MarineCarbonCaptureCostBaseClass):
         super().setup()
         n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
         plant_life = int(self.options["plant_config"]["plant"]["plant_life"])
+
+        self.add_input(
+            "annual_co2_produced",
+            val=0.0,
+            shape=plant_life,
+            units="t/year",
+            desc="Annual co2 captured",
+        )
         self.add_input(
             "LCOE",
             val=0.0,
@@ -449,7 +460,7 @@ class OAECostAndFinancialModel(MarineCarbonCaptureCostBaseClass):
             value_product=inputs["value_products"][0],
             waste_mass=inputs["mass_acid_disposed"][0],
             waste_disposal_cost=inputs["cost_acid_disposal"][0],
-            estimated_cdr=inputs["co2_capture"][0],  # TODO: replace with annual_co2_produced
+            estimated_cdr=inputs["annual_co2_produced"][0],
             base_added_seawater_max_power=inputs["based_added_seawater_max_power"][0],
             mass_rca=inputs["mass_rca"][0],
             annual_energy_cost=annual_energy_cost_usd_yr[0],
