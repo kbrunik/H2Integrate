@@ -434,6 +434,13 @@ class OAECostAndFinancialModel(MarineCarbonCaptureCostBaseClass):
 
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
         """Model assume that you only pay for the energy you use for OAE."""
+        if not inputs["annual_input_electricity"][0]:
+            msg = (
+                "the annual_input_electricity needs to be connected to "
+                "an annual electricity stream in the technology_interconnections "
+                "in the plant_config."
+            )
+            raise AttributeError(msg)
         annual_energy_cost_usd_yr = inputs["LCOE"] * (
             inputs["annual_input_electricity"][0] - (sum(inputs["unused_energy"]))
         )  # remove unused power from the annual energy cost only used power considered
