@@ -196,7 +196,7 @@ def test_performance_model(tech_config, plant_config, driver_config):
 
     # Additional asserts for output values
     co2_out = prob.get_val("co2_out", units="kg/h")
-    co2_capture_mtpy = prob.get_val("annual_co2_produced", units="t/year")
+    co2_capture_mtpy = prob.get_val("annual_co2_produced", units="t/year")[0]
     plant_mCC_capacity_mtph = prob.get_val("rated_co2_production", units="t/h")
     total_tank_volume_m3 = prob.get_val("total_tank_volume")
 
