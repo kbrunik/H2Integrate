@@ -21,6 +21,8 @@
   - Bugfix in tests of pyomo control strategies with `StoragePerformanceModel` so that the pathname attribute is correct
   - Added `demand_profile` as an input to `StoragePerformanceModel` and `PySAMBatteryPerformanceModel`
   - Renamed `xx_charge_fraction` to `xx_soc_fraction`
+- Bugfix input energy to OAE financial model [PR 617](https://github.com/NatLabRockies/H2Integrate/pull/617)
+  - Remove `MarineCarbonCapture` base classes
 
 ## 0.7.1 [March 13, 2026]
 
