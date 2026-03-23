@@ -128,7 +128,7 @@ class OAEPerformanceModel(PerformanceModelBaseClass):
             "alkaline_seawater_temp",
             val=0.0,
             shape=self.n_timesteps,
-            units="C",
+            units="degC",
             desc="Temperature of the alkaline seawater",
         )
         self.add_output(
