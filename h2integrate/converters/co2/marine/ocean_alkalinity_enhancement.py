@@ -2,7 +2,7 @@ from attrs import field, define
 from mcm.capture import echem_oae
 
 from h2integrate.core.utilities import BaseConfig, merge_shared_inputs
-from h2integrate.core.validators import must_equal
+from h2integrate.core.validators import gt_zero, contains, gte_zero, range_val, must_equal
 from h2integrate.core.model_baseclasses import (
     CostModelBaseClass,
     CostModelBaseConfig,
@@ -41,24 +41,27 @@ class OAEPerformanceConfig(BaseConfig):
         initial_dic_mol_per_L (float): Initial dissolved inorganic carbon (mol/L).
         initial_pH (float): Initial pH of seawater.
         initial_tank_volume_m3 (float): Initial volume of the tank (m³).
-        acid_disposal_method (str): Method for acid disposal.
+        acid_disposal_method (str): Method for acid disposal. Options are
+            "sell acid", "sell rca", "acid disposal".
         save_outputs (bool, optional): If true, save results to .csv files. Defaults to False.
         save_plots (bool, optional): If true, save plots of results. Defaults to False.
     """
 
-    number_ed_min: int = field()
-    number_ed_max: int = field()
+    number_ed_min: int = field(validator=gt_zero)
+    number_ed_max: int = field(validator=gt_zero)
     use_storage_tanks: bool = field()
-    store_hours: float = field()
-    assumed_CDR_rate: float = field()
-    frac_base_flow: float = field()
-    max_ed_system_flow_rate_m3s: float = field()
-    initial_temp_C: float = field()
-    initial_salinity_ppt: float = field()
-    initial_dic_mol_per_L: float = field()
-    initial_pH: float = field()
-    initial_tank_volume_m3: float = field()
-    acid_disposal_method: str = field()
+    store_hours: float = field(validator=gte_zero)
+    assumed_CDR_rate: float = field(validator=range_val(0, 1))
+    frac_base_flow: float = field(validator=range_val(0, 1))
+    max_ed_system_flow_rate_m3s: float = field(validator=gt_zero)
+    initial_temp_C: float = field(validator=gte_zero)
+    initial_salinity_ppt: float = field(validator=gte_zero)
+    initial_dic_mol_per_L: float = field(validator=gte_zero)
+    initial_pH: float = field(validator=gte_zero)
+    initial_tank_volume_m3: float = field(validator=gte_zero)
+    acid_disposal_method: str = field(
+        validator=contains(["sell acid", "sell rca", "acid disposal"])
+    )
     save_outputs: bool = field(default=False)
     save_plots: bool = field(default=False)
 
@@ -249,11 +252,7 @@ class OAECostModelConfig(CostModelBaseConfig):
 
 class OAECostModel(CostModelBaseClass):
     """OpenMDAO component for computing capital (CapEx) and operational (OpEx) costs of a
-        ocean alkalinity enhancement (OAE) system.
-
-    Computes:
-        - CapEx (USD)
-        - OpEx (USD/year)
+    ocean alkalinity enhancement (OAE) system.
     """
 
     def initialize(self):
@@ -342,10 +341,10 @@ class OAECostAndFinancialModel(CostModelBaseClass):
         net present value (NPV) of zero for the overall system costs.
 
     Computes:
-        - CapEx (USD)
-        - OpEx (USD/year)
-        - NPV ($)
-        - Carbon Credit Value (USD/tCO2)
+        - CapEx
+        - OpEx
+        - NPV
+        - Carbon Credit Value
     """
 
     def initialize(self):

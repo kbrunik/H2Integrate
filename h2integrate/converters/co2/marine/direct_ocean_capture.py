@@ -2,7 +2,7 @@ from attrs import field, define
 from mcm.capture import echem_mcc
 
 from h2integrate.core.utilities import BaseConfig, merge_shared_inputs
-from h2integrate.core.validators import must_equal
+from h2integrate.core.validators import gt_zero, contains, gte_zero, range_val, must_equal
 from h2integrate.core.model_baseclasses import CostModelBaseClass, PerformanceModelBaseClass
 
 
@@ -50,23 +50,23 @@ class DOCPerformanceConfig(BaseConfig):
         save_plots (bool, optional): If true, save plots of results. Defaults to False.
     """
 
-    number_ed_min: int = field()
-    number_ed_max: int = field()
+    number_ed_min: int = field(validator=gt_zero)
+    number_ed_max: int = field(validator=gt_zero)
     use_storage_tanks: bool = field()
-    store_hours: float = field()
-    power_single_ed_w: float = field()
-    flow_rate_single_ed_m3s: float = field()
-    E_HCl: float = field()
-    E_NaOH: float = field()
-    y_ext: float = field()
-    y_pur: float = field()
-    y_vac: float = field()
-    frac_ed_flow: float = field()
-    temp_C: float = field()
-    sal: float = field()
-    dic_i: float = field()
-    pH_i: float = field()
-    initial_tank_volume_m3: float = field()
+    store_hours: float = field(validator=gte_zero)
+    power_single_ed_w: float = field(validator=gte_zero)
+    flow_rate_single_ed_m3s: float = field(validator=gt_zero)
+    E_HCl: float = field(validator=gte_zero)
+    E_NaOH: float = field(validator=gte_zero)
+    y_ext: float = field(validator=range_val(0, 1))
+    y_pur: float = field(validator=range_val(0, 1))
+    y_vac: float = field(validator=range_val(0, 1))
+    frac_ed_flow: float = field(validator=range_val(0, 1))
+    temp_C: float = field(validator=gte_zero)
+    sal: float = field(validator=gte_zero)
+    dic_i: float = field(validator=gte_zero)
+    pH_i: float = field(validator=gte_zero)
+    initial_tank_volume_m3: float = field(validator=gte_zero)
     save_outputs: bool = field(default=False)
     save_plots: bool = field(default=False)
 
@@ -140,21 +140,17 @@ class DOCCostModelConfig(DOCPerformanceConfig):
     """Configuration for the DOC cost model.
 
     Attributes:
-        infrastructure_type (str): Type of infrastructure (e.g., "desal", "swCool", "new"").
+        infrastructure_type (str): Type of infrastructure (e.g., "desal", "swCool", "new").
         cost_year (int): dollar year corresponding to cost values
     """
 
-    infrastructure_type: str = field()
+    infrastructure_type: str = field(validator=contains(["desal", "swCool", "new"]))
     cost_year: int = field(default=2023, converter=int, validator=must_equal(2023))
 
 
 class DOCCostModel(CostModelBaseClass):
     """OpenMDAO component for computing capital (CapEx) and operational (OpEx) costs of a
-        direct ocean capture (DOC) system.
-
-    Computes:
-        - CapEx (USD)
-        - OpEx (USD/year)
+    direct ocean capture (DOC) system.
     """
 
     def initialize(self):
