@@ -1,0 +1,44 @@
+name: driver_config
+description: This analysis runs a tidal power plant
+general:
+  folder_output: outputs
+  create_om_reports: true
+#### Design of Experiments Setup
+driver:
+  design_of_experiments:
+    flag: true
+    debug_print: true
+    generator: csvgen
+    filename: csv_doe_cases.csv
+    run_parallel: false
+###### Design Variables
+design_variables:
+  tidal:
+    device_rating:
+      flag: true
+      lower: 1000.0  # kW
+      upper: 5000.0  # kW
+      units: kW
+    unit_capex:
+      flag: true
+      lower: 1000.0  # kW
+      upper: 3000.0  # kW
+      units: USD/kW
+    unit_opex:
+      flag: true
+      lower: 100.0  # kW
+      upper: 300.0  # kW
+      units: USD/kW/year
+#### Objective
+objective:
+  name: finance_subgroup_oae_profast.LCOC
+  # Objective options
+  # finance_subgroup_electricity.LCOE for tidal
+  # finance_subgroup_oae_profast.LCOC
+  # oae.carbon_credit_value
+recorder:
+  file: cases.sql
+  overwrite_recorder: true
+  flag: true
+  includes: ['*']
+  excludes: ['*_resource*']

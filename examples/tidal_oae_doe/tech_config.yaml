@@ -1,0 +1,84 @@
+name: technology_config
+description: This plant produces electricity from tidal and powers an off-grid OAE plant.
+technologies:
+  tidal:
+    performance_model:
+      model: PySAMTidalPerformanceModel
+    cost_model:
+      model: GenericConverterCostModel
+    model_inputs:
+      performance_parameters:
+        device_rating_kw: 1115.0  # Based on the RM1
+        num_devices: 20
+        tidal_power_curve:  # [tide_velocity (m/s), power (kW)]
+          - [0.000000, 0.000000]
+          - [0.100000, 0.000000]
+          - [0.200000, 0.000000]
+          - [0.300000, 0.000000]
+          - [0.400000, 0.000000]
+          - [0.500000, 0.000000]
+          - [0.600000, 10.421100]
+          - [0.700000, 20.842300]
+          - [0.800000, 39.968900]
+          - [0.900000, 59.095600]
+          - [1.000000, 89.201600]
+          - [1.100000, 119.308000]
+          - [1.200000, 160.886000]
+          - [1.300000, 202.464000]
+          - [1.400000, 259.292000]
+          - [1.500000, 316.120000]
+          - [1.600000, 392.673000]
+          - [1.700000, 469.226000]
+          - [1.800000, 570.306000]
+          - [1.900000, 671.386000]
+          - [2.000000, 802.908000]
+          - [2.100000, 934.430000]
+          - [2.200000, 1024.710000]
+          - [2.300000, 1115.000000]
+          - [2.400000, 1115.000000]
+          - [2.500000, 1115.000000]
+          - [2.600000, 1115.000000]
+          - [2.700000, 1115.000000]
+          - [2.800000, 1115.000000]
+          - [2.900000, 1115.000000]
+          - [3.000000, 1115.000000]
+          - [3.100000, 1115.000000]
+          - [3.200000, 1085.370000]
+          - [3.300000, 1055.730000]
+        pysam_options:
+          MHKTidal:
+            # losses are currently set to 0.0 can be updated
+            loss_array_spacing: 0.0
+            loss_resource_overprediction: 0.0
+            loss_transmission: 0.0
+            loss_downtime: 0.0
+            loss_additional: 0.0
+      cost_parameters:
+        commodity: electricity
+        commodity_rate_units: kW
+        commodity_amount_units: kW*h
+        unit_capex: 2500.0  # USD/kW
+        unit_opex: 200.0  # USD/kW/year
+        unit_varopex: 0.0  # USD/kWh
+        cost_year: 2020  # Update to correct cost year
+  oae:
+    performance_model:
+      model: OAEPerformanceModel
+    finance_model:
+      model: OAECostAndFinancialModel
+    model_inputs:
+      performance_parameters:
+        number_ed_min: 1
+        number_ed_max: 10
+        max_ed_system_flow_rate_m3s: 0.0324  # m^3/s
+        frac_base_flow: 0.5
+        assumed_CDR_rate: 0.8  # mol CO2/mol NaOH
+        use_storage_tanks: true
+        initial_tank_volume_m3: 0.  # m^3
+        store_hours: 12.  # hours
+        acid_disposal_method: sell rca
+        initial_salinity_ppt: 73.76  # ppt
+        initial_temp_C: 10.0  # degrees Celsius
+        initial_dic_mol_per_L: 0.0044  # mol/L
+        initial_pH: 8.1  # initial pH
+        save_outputs: true
