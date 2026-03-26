@@ -52,3 +52,6 @@ config["driver_config"] = driver_config
 # Rerun the model
 model = H2IntegrateModel(config)
 model.run()
+
+# Saves results to a CSV in outputs folder
+model.post_process(summarize_sql=True)
