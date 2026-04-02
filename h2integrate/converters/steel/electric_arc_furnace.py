@@ -23,10 +23,8 @@ kmol_NG_to_Nm3_NG = 1.39  # Nm^3 NG, approximated as CH4, 'Model Inputs & Output
 kmol_NG_to_MMbtu_NG = 0.04  # MMBtu NG, approximated as CH4, 'Model Inputs & Outputs!C141'
 kmol_NG_to_MMbtu = 0.79  # MMBtu, approximated as CH4, 'Model Inputs & Outputs!C142'
 
-# CMU Pig Iron based EAF model pythonization
+# CMU EAF model pythonization
 # NOTE: values are largely in metric system, all tons = metric tons
-# NOTE: I imagine most hardcoced values in below performance components will be replaced with inputs
-# from config or feedstocks
 
 @define
 class CMUElectricArcFurnaceScrapOnlyPerformanceBaseConfig(BaseConfig):
@@ -60,7 +58,6 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
         n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
 
-        # NOTE: exposes shared inputs to performance and shared inputs 
         self.config = CMUElectricArcFurnaceScrapOnlyPerformanceBaseConfig.from_dict(
             merge_shared_inputs(self.options["tech_config"]["model_inputs"], "performance"),
             strict=True,
@@ -86,10 +83,9 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
         # NOTE: was going to add plant life = 40 years here but that seems to be part of the cost component in other models?
 
-        # NOTE: update with proper feedstocks
+        # Add feedstock inputs and outputs, default to 0 --> set using feedstock component
         # (everything under "Input feedstocks for EAF Fed with Scrap Only")
         # oxygen, electricity, natural gas, electrodes, scrap steel, coal, burnt doloma, burnt lime
-        # Add feedstock inputs and outputs, default to 0 --> set using feedstock component
 
         feedstocks_to_units = {
             "oxygen":"m**3/t",
@@ -118,10 +114,10 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
                 desc=f"{feedstock} consumed for steel production",
             )
 
+        #NOTE: depending on if outputs on per tLS or per tscrap basis, desc may need to be dynamically set?
         # Add outputs
-        # NOTE: need clarity on units and how to represent them here
         self.add_output(
-            "mass slag",  # == mass_slag_per_tscrap
+            "mass_slag",  # == mass_slag_per_tscrap
             val=0.0,
             shape=n_timesteps, 
             units="kg/t",
@@ -169,7 +165,6 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         )
 
     def compute(self, inputs, outputs):
-        # NOTE: where should these live as inputs / config / feedstocks?
         # Steel and scrap composition
         # NOTE update below 2 feedstock sections to get feedstocks appropriately based on updates in setup
         # get feedstocks
@@ -179,88 +174,100 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         natural_gas = 0.44  # MMBtu/ton steel, '5. Electric Arc Furnace!C32'
         electrodes = 2.00  # kg/ton steel, '5. Electric Arc Furnace!C33'
 
-        # 12. EAF Mass & Energy Balance
+        eaf_scrap_only_output_dict = self.CMUElectricArcFurnaceScrapOnlyMassEnergyBalance()
+
+        # Insert logic for if determining inputs based on desired steel production rate
+        # or if determining steel production based on inputs
+        if True:
+            
+        # set outputs
+        # Input feedstocks for EAF Fed with Scrap Only
+        outputs["oxygen"] = oxygen  # Total Nm^3 O2 per ton steel
+        outputs["electricity"] = electricity  # Total kWh electricity per ton steel
+        outputs["natural_gas"] = natural_gas  # Total MMBtu NG per ton steel
+        outputs["electrodes"] = electrodes  # Total kg Electrodes per ton steel
+        outputs["scrap steel"] = scrap_steel  # Total ton scrap per ton steel
+        outputs["coal"] = coal  # Total ton coal per ton steel
+        outputs["burnt doloma"] = burnt_doloma  # Total ton burnt doloma per ton steel
+        outputs["burnt_lime"] = burnt_lime  # Total ton burnt lime per ton steel
+
+        # Output for EAF Fed with Scrap only
+        outputs["mass slag"] = mass_slag_per_tscrap  # Total kg slag per tscrap
+        outputs["mass MgO slag"] = mass_MgO_slag_per_tscrap  # Total kg MgO in slag per tscrap
+        outputs["mass FeO slag"] = mass_FeO_slag_per_tscrap  # Total kg FeO in slag per tscrap
+        outputs["mass Fe to FeO"] = (
+            mass_Fe_to_FeO_tscrap  # Total kg Fe consumed to produce FeO per tscrap
+        )
+        outputs["mass Fe from scrap"] = mass_Fe_DRI_per_tscrap  # Total kg Fe from scrap per tscrap
+        outputs["mass steel"] = (
+            mass_steel_per_tscrap  # Total kg Steel formed from scrap per ton scrap
+        )
+
+    def CMUElectricArcFurnaceScrapOnlyMassEnergyBalance(self):
+        output_dict = {}
+        # Including DRI in feed (assumed constants in feedstocks)
+        natural_gas = 0.44  # MMBtu/ton steel, '5. Electric Arc Furnace!C32'
+        electrodes = 2.00  # kg/ton steel, '5. Electric Arc Furnace!C33'
+
+        # 12. EAF Mass & Energy Balance 
         # Essential Mass Summary
-        # NOTE: This is probably the equivalent of system_capacity / annual_production
-        mass_steel_stream = units.convert_units(inputs["annual_production"], 't/year', 'kg/year')  # kg liquid steel, '12. EAF Mass & Energy Balance!D4'
+        # NOTE: Hardcoding mass_steel_stream and mass_basis_scrap for per ton liquid steel and per ton scrap basis calculations
+        mass_steel_stream = 1000  # kg liquid steel, '12. EAF Mass & Energy Balance!D4'
         pct_carbon_steel = self.config.steel_percent_carbon  # % mass C, 'Model Inputs & Outputs!B26' > '12. EAF Mass & Energy Balance!D5'
-        mass_iron_per_tLS = mass_steel_stream * (
-            1 - pct_carbon_steel
-        )  # kg Fe/ton liquid steel, '12. EAF Mass & Energy Balance!D7'
-        mass_carbon_per_tLS = (
-            mass_steel_stream * pct_carbon_steel
-        )  # kg C/ton liquid steel, '12. EAF Mass & Energy Balance!D8'
-        scrap_composition = self.config.scrap_composition  # % mass Fe, 'Model Inputs & Outputs!B27'
-        # % mass SiO2, 'Model Inputs & Outputs!B28'
+        mass_iron_per_tLS = mass_steel_stream * (1 - pct_carbon_steel)  # kg Fe/ton liquid steel, '12. EAF Mass & Energy Balance!D7'
+        mass_carbon_per_tLS = mass_steel_stream * pct_carbon_steel  # kg C/ton liquid steel, '12. EAF Mass & Energy Balance!D8'
+        scrap_composition = self.config.scrap_composition   # % mass Fe and % mass SiO2, 'Model Inputs & Outputs!B27' & 'Model Inputs & Outputs!B28' 
 
         # Electric Arc Furnace Fed with Scrap Only - Mass Balance (Fe, C, O, MgO, SiO2, Al2O3, CaO)
         # NOTE: calculated per ton scrap (tsrap)
         mass_basis_scrap = 1000  # kg, '12. EAF Mass & Energy Balance!D47'
-        mass_pct_SiO2_scrap = scrap_composition[
-            "SiO2"
-        ]  # % mass SiO2, 'Model Inputs & Outputs!B28' > '12. EAF Mass & Energy Balance!D48'
-        mass_SiO2_scrap_per_tscrap = (
-            mass_basis_scrap * mass_pct_SiO2_scrap
-        )  # kg SiO2 per ton scrap, '12. EAF Mass & Energy Balance!D49'
+        mass_pct_SiO2_scrap = scrap_composition["SiO2"]  # % mass SiO2, 'Model Inputs & Outputs!B28' > '12. EAF Mass & Energy Balance!D48'
+        mass_SiO2_scrap_per_tscrap = mass_basis_scrap * mass_pct_SiO2_scrap  # kg SiO2 per ton scrap, '12. EAF Mass & Energy Balance!D49'
 
-        slag_B3 = (
-            1.50  # basicity, kg CaO / (kg SiO2 + kg Al2O3), '12. EAF Mass & Energy Balance!D51'
-        )
+        slag_B3 = 1.50  # basicity, kg CaO / (kg SiO2 + kg Al2O3), '12. EAF Mass & Energy Balance!D51'
         mass_SiO2_slag_per_tscrap = mass_SiO2_scrap_per_tscrap  # kg total SiO2 in slag per ton scrap, '12. EAF Mass & Energy Balance!D52'
-        mass_Al2O3_slag_per_tscrap = (
-            0.0  # kg Al2O3 in slag per ton scrap, '12. EAF Mass & Energy Balance!D53'
-        )
-        mass_CaO_slag_per_tscrap = slag_B3 * (
-            mass_SiO2_slag_per_tscrap + mass_Al2O3_slag_per_tscrap
-        )  # kg CaO in slag per ton scrap,  '12. EAF Mass & Energy Balance!D54'
+        mass_Al2O3_slag_per_tscrap = 0.0 # kg Al2O3 in slag per ton scrap, '12. EAF Mass & Energy Balance!D53'
+        mass_CaO_slag_per_tscrap = slag_B3 * (mass_SiO2_slag_per_tscrap + mass_Al2O3_slag_per_tscrap) # kg CaO in slag per ton scrap,  '12. EAF Mass & Energy Balance!D54'
 
-        pct_MgO_slag = (
-            12.0 / 100
-        )  # mass fraction MgO in slag, assumed input, '12. EAF Mass & Energy Balance!D56'
-        pct_FeO_slag = (
-            30.0 / 100
-        )  # mass fraction FeO in slag, assumed input, '12. EAF Mass & Energy Balance!D57'
-        mass_slag_per_tscrap = (
+        pct_MgO_slag = (12.0 / 100) # mass fraction MgO in slag, assumed input, '12. EAF Mass & Energy Balance!D56'
+        pct_FeO_slag = (30.0 / 100) # mass fraction FeO in slag, assumed input, '12. EAF Mass & Energy Balance!D57'
+        output_dict["mass_slag_per_tscrap"] = (
             mass_SiO2_slag_per_tscrap + mass_Al2O3_slag_per_tscrap + mass_CaO_slag_per_tscrap
-        ) / (
-            1 - pct_MgO_slag - pct_FeO_slag
-        )  # kg slag per ton scrap, '12. EAF Mass & Energy Balance!D58'
-        mass_MgO_slag_per_tscrap = (
-            pct_MgO_slag * mass_slag_per_tscrap
-        )  # kg MgO in slag per ton scrap, '12. EAF Mass & Energy Balance!D59'
-        mass_FeO_slag_per_tscrap = (
-            pct_FeO_slag * mass_slag_per_tscrap
+        ) / (1 - pct_MgO_slag - pct_FeO_slag)  # kg slag per ton scrap, '12. EAF Mass & Energy Balance!D58'
+        output_dict["mass_MgO_slag_per_tscrap"] = (pct_MgO_slag * output_dict["mass_slag_per_tscrap"])  # kg MgO in slag per ton scrap, '12. EAF Mass & Energy Balance!D59'
+        output_dict["mass_FeO_slag_per_tscrap"] = (
+            pct_FeO_slag * output_dict["mass_slag_per_tscrap"]
         )  # kg FeO in slag per ton scrap, '12. EAF Mass & Energy Balance!D60'
         moles_FeO_slag_per_tscrap = (
-            mass_FeO_slag_per_tscrap / 71.8
+            output_dict["mass_FeO_slag_per_tscrap"] / 71.8
         )  # kmol FeO in slag per ton scrap, '12. EAF Mass & Energy Balance!D61'
         moles_Fe_to_FeO_tscrap = moles_FeO_slag_per_tscrap  # kmol Fe consumed to produce FeO per ton scrap, '12. EAF Mass & Energy Balance!D62'
-        mass_Fe_to_FeO_tscrap = (
+        output_dict["mass_Fe_to_FeO_tscrap"] = (
             moles_Fe_to_FeO_tscrap * 55.80
         )  # kg Fe consumed to produce FeO per ton scrap, '12. EAF Mass & Energy Balance!D63'
 
-        mass_Fe_DRI_per_tscrap = (
-            (mass_basis_scrap * scrap_composition["Fe"]) - mass_Fe_to_FeO_tscrap
+        output_dict["mass_Fe_scrap_per_tscrap"] = (
+            (mass_basis_scrap * scrap_composition["Fe"]) - output_dict["mass_Fe_to_FeO_tscrap"]
         )  # kg Fe mass from scrap per ton scrap, '12. EAF Mass & Energy Balance!D65'
-        mass_steel_per_tscrap = mass_Fe_DRI_per_tscrap / (
+        output_dict["mass_steel_per_tscrap"] = output_dict["mass_Fe_scrap_per_tscrap"] / (
             1 - pct_carbon_steel
         )  # kg steel formed from DRI + scrap per ton srap, '12. EAF Mass & Energy Balance!D66'
 
         # NOTE calculated per ton liquid steel (tLS)
-        mass_scrap_per_tLS = (
-            mass_basis_scrap / mass_steel_per_tscrap
+        output_dict["mass_scrap_per_tLS"] = (
+            mass_basis_scrap / output_dict["mass_steel_per_tscrap"]
         ) * 1000  # kg scrap per ton LS, '12. EAF Mass & Energy Balance!D69'
         mass_pct_SiO2_scrap = scrap_composition[
             "SiO2"
         ]  # mass fraction SiO2, '12. EAF Mass & Energy Balance!D70' > 'Model Inputs & Outputs!B28'
-        mass_SiO2_scrap_per_tscrap = (
-            mass_scrap_per_tLS * mass_pct_SiO2_scrap
+        mass_SiO2_scrap_per_tLS = (
+            output_dict["mass_scrap_per_tLS"] * mass_pct_SiO2_scrap
         )  # kg SiO2 from scrap per ton LS, '12. EAF Mass & Energy Balance!D71'
 
         slag_B3 = (
             1.5  # basicity, kg CaO / (kg SiO2 + kg Al2O3), '12. EAF Mass & Energy Balance!D73'
         )
-        mass_SiO2_slag_per_tLS = mass_SiO2_scrap_per_tscrap  # total kg SiO2 in slag per ton LS, '12. EAF Mass & Energy Balance!D74'
+        mass_SiO2_slag_per_tLS = mass_SiO2_scrap_per_tLS  # total kg SiO2 in slag per ton LS, '12. EAF Mass & Energy Balance!D74'
         mass_Al2O3_slag_per_tLS = (
             0.0  # total kg Al2O3 in slag per ton LS, '12. EAF Mass & Energy Balance!D75'
         )
@@ -274,27 +281,27 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         pct_FeO_slag = (
             30.0 / 100
         )  # mass fraction FeO in slag, assumed input, '12. EAF Mass & Energy Balance!D79'
-        mass_slag_per_tLS = (
+        output_dict["mass_slag_per_tLS"] = (
             mass_SiO2_slag_per_tLS + mass_Al2O3_slag_per_tLS + mass_CaO_slag_per_tLS
         ) / (
             1 - pct_MgO_slag - pct_FeO_slag
         )  # kg slag per ton LS, '12. EAF Mass & Energy Balance!D80'
-        mass_MgO_slag_per_tLS = (
-            pct_MgO_slag * mass_slag_per_tLS
+        output_dict["mass_MgO_slag_per_tLS"] = (
+            pct_MgO_slag * output_dict["mass_slag_per_tLS"]
         )  # total mass MgO in slag per ton LS, '12. EAF Mass & Energy Balance!D81'
-        mass_FeO_slag_per_tLS = (
-            pct_FeO_slag * mass_slag_per_tLS
+        output_dict["mass_FeO_slag_per_tLS"] = (
+            pct_FeO_slag * output_dict["mass_slag_per_tLS"]
         )  # total mass FeO in slag per ton LS, '12. EAF Mass & Energy Balance!D82'
         moles_FeO_slag_per_tLS = (
-            mass_FeO_slag_per_tLS / 71.80
+            output_dict["mass_FeO_slag_per_tLS"] / 71.80
         )  # moles FeO in slag per ton LS, '12. EAF Mass & Energy Balance!D83'
         moles_Fe_to_FeO_tLS = moles_FeO_slag_per_tLS  # moles Fe consumed to produce FeO in slag per ton LS, '12. EAF Mass & Energy Balance!D84'
-        (
-            moles_Fe_to_FeO_tLS * 55.80
-        )  # kg Fe consumed to produce FeO in slag per ton LS, '12. EAF Mass & Energy Balance!D85'
+        output_dict["mass_Fe_to_FeO_tLS"] = moles_Fe_to_FeO_tLS * 55.80  # kg Fe consumed to produce FeO in slag per ton LS, '12. EAF Mass & Energy Balance!D85'
         moles_O2_to_FeO_tLS = (
             moles_Fe_to_FeO_tLS * 0.5
         )  # moles O2 consumed to produce FeO in slag per ton LS, '12. EAF Mass & Energy Balance!D86'
+
+        output_dict["mass_Fe_scrap_per_tLS"] = output_dict["mass_Fe_scrap_per_tscrap"] * (output_dict["mass_scrap_per_tLS"] / 1000)
 
         mass_C_ng_per_tLS = ((natural_gas * MMbtu_to_MJ) / 50.0) * (
             12.0 / 16.0
@@ -337,7 +344,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
         # Electric Arc Furnace (EAF) Fed with Scrap - Flux Addition
         CaO_MgO_ratio = 56.00 / 40.00  # (kg/kg), '12. EAF Mass & Energy Balance!D113'
-        mass_MgO_doloma = mass_MgO_slag_per_tLS  # (kg/tLS), '12. EAF Mass & Energy Balance!D114'
+        mass_MgO_doloma = output_dict["mass_MgO_slag_per_tLS"]  # (kg/tLS), '12. EAF Mass & Energy Balance!D114'
         mass_CaO_doloma = (
             mass_MgO_doloma * CaO_MgO_ratio
         )  # (kg/tLS), '12. EAF Mass & Energy Balance!D115'
@@ -355,7 +362,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         # NOTE: Possibly replace these mole values with actual enthalpy calculations from excel sheet?
         scrap_Fe_J_mol = 0.0  # H (J/mol) Fe, '12. EAF Mass & Energy Balance!D124' > '14. Enthalpy Calculations!C113'
         scrap_Fe_kg = (
-            mass_scrap_per_tLS * scrap_composition["Fe"]
+            output_dict["mass_scrap_per_tLS"] * scrap_composition["Fe"]
         )  # kg Fe, '12. EAF Mass & Energy Balance!F124'
         scrap_Fe_n_kmol = scrap_Fe_kg / 55.80  # kmol Fe, '12. EAF Mass & Energy Balance!E124'
         scrap_Fe_kJ = (
@@ -365,7 +372,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         scrap_SiO2_J_mol = (
             -9.0830e05
         )  # H (J/mol) SiO2, '12. EAF Mass & Energy Balance!D125' > '14. Enthalpy Calculations!C207'
-        scrap_SiO2_kg = mass_SiO2_scrap_per_tscrap  # kg SiO2, '12. EAF Mass & Energy Balance!F125' > '12. EAF Mass & Energy Balance!D71'
+        scrap_SiO2_kg = mass_SiO2_scrap_per_tLS  # kg SiO2, '12. EAF Mass & Energy Balance!F125' > '12. EAF Mass & Energy Balance!D71'
         scrap_SiO2_n_kmol = scrap_SiO2_kg / 60.00  # kmol SiO2, '12. EAF Mass & Energy Balance!E125'
         scrap_SiO2_kJ = (
             scrap_SiO2_J_mol * scrap_SiO2_n_kmol
@@ -383,7 +390,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         flux_MgO_J_mol = (
             -6.0160e05
         )  # H (J/mol) MgO, '12. EAF Mass & Energy Balance!D127' > '14. Enthalpy Calculations!C181'
-        flux_MgO_kg = mass_MgO_slag_per_tLS  # kg MgO, '12. EAF Mass & Energy Balance!F127' > '12. EAF Mass & Energy Balance!D81'
+        flux_MgO_kg = output_dict["mass_MgO_slag_per_tLS"]  # kg MgO, '12. EAF Mass & Energy Balance!F127' > '12. EAF Mass & Energy Balance!D81'
         flux_MgO_n_kmol = flux_MgO_kg / 40.0  # kmol MgO, '12. EAF Mass & Energy Balance!E127'
         flux_MgO_kJ = (
             flux_MgO_J_mol * flux_MgO_n_kmol
@@ -430,11 +437,11 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
             steel_C_J_mol * steel_C_kmol
         )  # kJ C in Steel product, '12. EAF Mass & Energy Balance!G135'
 
-        slag_FeO_kg = mass_FeO_slag_per_tLS  # kg FeO in slag product, '12. EAF Mass & Energy Balance!F136' > '12. EAF Mass & Energy Balance!D82'
+        slag_FeO_kg = output_dict["mass_FeO_slag_per_tLS"]  # kg FeO in slag product, '12. EAF Mass & Energy Balance!F136' > '12. EAF Mass & Energy Balance!D82'
         slag_SiO2_kg = mass_SiO2_slag_per_tLS  # kg SiO2 in slag product, '12. EAF Mass & Energy Balance!F137' > '12. EAF Mass & Energy Balance!D74'
         slag_Al2O3_kg = mass_Al2O3_slag_per_tLS  # kg Al2O3 in slag product, '12. EAF Mass & Energy Balance!F138' > '12. EAF Mass & Energy Balance!D75'
         slag_CaO_kg = mass_CaO_slag_per_tLS  # kg CaO in slag product, '12. EAF Mass & Energy Balance!F139' > '12. EAF Mass & Energy Balance!D76'
-        slag_MgO_kg = mass_MgO_slag_per_tLS  # kg MgO in slag product, '12. EAF Mass & Energy Balance!F140' > '12. EAF Mass & Energy Balance!D81'
+        slag_MgO_kg = output_dict["mass_MgO_slag_per_tLS"]  # kg MgO in slag product, '12. EAF Mass & Energy Balance!F140' > '12. EAF Mass & Energy Balance!D81'
         slag_total_kJ = (
             -8.354013744345140e00
             * (slag_FeO_kg + slag_SiO2_kg + slag_Al2O3_kg + slag_CaO_kg + slag_MgO_kg)
@@ -477,48 +484,26 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
         # 5. Electric Arc Furnace > Scrap Only
         # Electric Arc Furnace (EAF) with Scrap process Inputs (Feedstocks)
-        oxygen = nm3_O2_per_tLS  # Nm^3 O2/ton Steel, '12. EAF Mass & Energy Balance!D101' > '5. Electric Arc Furnace!C5'
-        electricity = EAF_scrap_energy_consumption_w_heat_loss_kWh_tHM  # kWh/ton Hot Metal / Liquid Steel?, Harcoded as 470, '12. EAF Mass & Energy Balance!G151' >'5. Electric Arc Furnace!C6'
-        natural_gas = (
+        output_dict["oxygen_per_tLS"] = nm3_O2_per_tLS  # Nm^3 O2/ton Steel, '12. EAF Mass & Energy Balance!D101' > '5. Electric Arc Furnace!C5'
+        output_dict["electricity_per_tLS"] = EAF_scrap_energy_consumption_w_heat_loss_kWh_tHM  # kWh/ton Hot Metal / Liquid Steel?, Harcoded as 470, '12. EAF Mass & Energy Balance!G151' >'5. Electric Arc Furnace!C6'
+        output_dict["natural_gas_per_tLS"] = (
             natural_gas  # MMBtu/ton steel, Hardocded as 0.44, '5. Electric Arc Furnace!C7'
         )
-        electrodes = electrodes  # kg/ton steel,  Hardocded as 2.0, '5. Electric Arc Furnace!C8'
-        scrap_steel = (
-            mass_scrap_per_tLS / 1000
+        # electrodes = electrodes  # kg/ton steel,  Hardocded as 2.0, '5. Electric Arc Furnace!C8'
+        output_dict["scrap_steel_per_tLS"] = (
+            output_dict["mass_scrap_per_tLS"] / 1000
         )  # ton, '5. Electric Arc Furnace!C9' > '12. EAF Mass & Energy Balance!D27/1000'
-        coal = (
+        output_dict["coal_per_tLS"] = (
             mass_injected_carbon_per_tLS / 0.806 / 1000
         )  # ton, assum 0.806 tonC/tonCoal, '5. Electric Arc Furnace!C10' > '12. EAF Mass & Energy Balance!D91/0.806/1000'
-        burnt_doloma = (
+        output_dict["burnt_doloma_per_tLS"] = (
             mass_doloma / 1000
         )  # ton, '5. Electric Arc Furnace!C11' > '12. EAF Mass & Energy Balance!D116/1000'
-        burnt_lime = (
+        output_dict["burnt_lime_per_tLS"] = (
             mass_lime / 1000
         )  # ton, '5. Electric Arc Furnace!C12' > '12. EAF Mass & Energy Balance!D117/1000'
 
-        # set outputs
-        # Input feedstocks for EAF Fed with Scrap Only
-        outputs["oxygen"] = oxygen  # Total Nm^3 O2 per ton steel
-        outputs["electricity"] = electricity  # Total kWh electricity per ton steel
-        outputs["natural_gas"] = natural_gas  # Total MMBtu NG per ton steel
-        outputs["electrodes"] = electrodes  # Total kg Electrodes per ton steel
-        outputs["scrap steel"] = scrap_steel  # Total ton scrap per ton steel
-        outputs["coal"] = coal  # Total ton coal per ton steel
-        outputs["burnt doloma"] = burnt_doloma  # Total ton burnt doloma per ton steel
-        outputs["burnt_lime"] = burnt_lime  # Total ton burnt lime per ton steel
-
-        # Output for EAF Fed with Scrap only
-        outputs["mass slag"] = mass_slag_per_tscrap  # Total kg slag per tscrap
-        outputs["mass MgO slag"] = mass_MgO_slag_per_tscrap  # Total kg MgO in slag per tscrap
-        outputs["mass FeO slag"] = mass_FeO_slag_per_tscrap  # Total kg FeO in slag per tscrap
-        outputs["mass Fe to FeO"] = (
-            mass_Fe_to_FeO_tscrap  # Total kg Fe consumed to produce FeO per tscrap
-        )
-        outputs["mass Fe from scrap"] = mass_Fe_DRI_per_tscrap  # Total kg Fe from scrap per tscrap
-        outputs["mass steel"] = (
-            mass_steel_per_tscrap  # Total kg Steel formed from scrap per ton scrap
-        )
-
+        return output_dict
 
 class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
     def initialize(self):
