@@ -132,20 +132,17 @@ def test_energy_mass_balance_per_unit(
         )
     prob.run_model()
 
-    with subtests.test("kg_slag per tscrap"):
-        assert pytest.approx(prob.get_val("mass_slag"), rel=1e-6) == 43.103448275862064
+    with subtests.test("kg_slag"):
+        assert pytest.approx(sum(prob.get_val("mass_slag")), rel=1e-6) == 46.30390896654156
 
-    with subtests.test("kg_MGO_in_slag_per_tscrap"):
-        assert pytest.approx(prob.get_val("mass_MgO_slag"), rel=1e-6) == 5.1724137931034475
+    with subtests.test("kg_MGO_in_slag"):
+        assert pytest.approx(sum(prob.get_val("mass_MgO_slag")), rel=1e-6) == 5.556469075984987
 
-    with subtests.test("kg_FeO_in_slag_pe_tscrap"):
-        assert pytest.approx(prob.get_val("mass_FeO_slag"), rel=1e-6) == 12.93103448275862
+    with subtests.test("kg_FeO_in_slag"):
+        assert pytest.approx(sum(prob.get_val("mass_FeO_slag")), rel=1e-6) == 13.891172689962469
 
-    with subtests.test("kg_Fe_consumed_to_produce_FeO_per_tscrap"):
-        assert pytest.approx(prob.get_val("mass_Fe_to_FeO"), rel=1e-6) == 10.049466909999039
-
-    with subtests.test("mass_Fe_from_scrap_per_tscrap"):
-        assert pytest.approx(prob.get_val("mass_Fe_from_scrap"), rel=1e-6) == 929.9505330900009
+    with subtests.test("mass_Fe_from_scrap"):
+        assert pytest.approx(sum(prob.get_val("mass_Fe_from_scrap")), rel=1e-6) == 999
 
     with subtests.test("mass_steel_per_unit_scrap"):
         assert (

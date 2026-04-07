@@ -26,7 +26,7 @@ from h2integrate.core.model_baseclasses import PerformanceModelBaseClass
 
 
 @define
-class CMUElectricArcFurnaceScrapOnlyPerformanceBaseConfig(BaseConfig):
+class CMUElectricArcFurnaceScrapOnlyPerformanceConfig(BaseConfig):
     """Configuration baseclass for CMUElectricArcFurnaceScrapOnlyPerformanceComponent.
 
     Attributes:
@@ -42,7 +42,6 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceBaseConfig(BaseConfig):
 
     """
 
-    # steel_capacity_rate_tonnes_per_year: float = field(default=2.2)   # metric tons/year
     steel_production_rate_tonnes_per_year: float = field(default=2.0)  # metric tons/year
     steel_percent_carbon: float = field(
         default=0.1 / 100
@@ -100,7 +99,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
         n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
 
-        self.config = CMUElectricArcFurnaceScrapOnlyPerformanceBaseConfig.from_dict(
+        self.config = CMUElectricArcFurnaceScrapOnlyPerformanceConfig.from_dict(
             merge_shared_inputs(self.options["tech_config"]["model_inputs"], "performance"),
             strict=True,
             additional_cls_name=self.__class__.__name__,
@@ -153,49 +152,48 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
             )
 
         # Add outputs
-        # TODO: Change to per ton of liquid steel basis
         self.add_output(
-            "mass_slag",  # == mass_slag_per_tscrap
+            "mass_slag",
             val=0.0,
             shape=n_timesteps,
-            units="kg/t",
-            desc="Total unit of slag per unit of scrap",
+            units="kg",
+            desc="Total unit of slag",
         )
 
         self.add_output(
-            "mass_MgO_slag",  # == mass_MgO_slag_per_tscrap
+            "mass_MgO_slag",
             val=0.0,
             shape=n_timesteps,
-            units="kg/t",
-            desc="Total unit of MgO in slag per unit of scrap",
+            units="kg",
+            desc="Total unit of MgO in slag",
         )
 
         self.add_output(
-            "mass_FeO_slag",  # == mass_FeO_slag_per_tscrap
+            "mass_FeO_slag",
             val=0.0,
             shape=n_timesteps,
-            units="kg/t",
-            desc="Total unit of FeO in slag per unit of scrap",
+            units="kg",
+            desc="Total unit of FeO in slag",
         )
 
         self.add_output(
-            "mass_Fe_to_FeO",  # == mass_Fe_to_FeO_tscrap
+            "mass_Fe_to_FeO",
             val=0.0,
             shape=n_timesteps,
-            units="kg/t",
-            desc="Total unit of Fe consumed to produce FeO per unit of scrap",
+            units="kg",
+            desc="Total unit of Fe consumed to produce FeO",
         )
 
         self.add_output(
-            "mass_Fe_from_scrap",  # == mass_Fe_DRI_per_tscrap
+            "mass_Fe_from_scrap",
             val=0.0,
             shape=n_timesteps,
-            units="kg/t",
-            desc="Total unit of Fe from scrap per unit of scrap",
+            units="kg",
+            desc="Total unit of Fe from scrap",
         )
 
         self.add_output(
-            "mass_steel_per_unit_scrap",  # == mass_steel_per_tscrap
+            "mass_steel_per_unit_scrap",
             val=0.0,
             shape=n_timesteps,
             units="kg/t",
@@ -270,16 +268,18 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         for feedstock_type, consumption_rate in feedstocks_usage_per_tonne_steel.items():
             outputs[f"{feedstock_type}_consumed"] = steel_production * consumption_rate
 
-        # Total kg slag per tscrap
-        outputs["mass_slag"] = energy_mass_per_tonne["mass_slag_per_tscrap"]
-        # Total kg MgO in slag per tscrap
-        outputs["mass_MgO_slag"] = energy_mass_per_tonne["mass_MgO_slag_per_tscrap"]
-        # Total kg FeO in slag per tscrap
-        outputs["mass_FeO_slag"] = energy_mass_per_tonne["mass_FeO_slag_per_tscrap"]
-        # Total kg Fe consumed to produce FeO per tscrap
-        outputs["mass_Fe_to_FeO"] = energy_mass_per_tonne["mass_Fe_to_FeO_tscrap"]
-        # Total kg Fe from scrap per tscrap
-        outputs["mass_Fe_from_scrap"] = energy_mass_per_tonne["mass_Fe_scrap_per_tscrap"]
+        # Total kg slag
+        outputs["mass_slag"] = energy_mass_per_tonne["mass_slag_per_tLS"] * steel_production
+        # Total kg MgO in slag
+        outputs["mass_MgO_slag"] = energy_mass_per_tonne["mass_MgO_slag_per_tLS"] * steel_production
+        # Total kg FeO in slag
+        outputs["mass_FeO_slag"] = energy_mass_per_tonne["mass_FeO_slag_per_tLS"] * steel_production
+        # Total kg Fe consumed to produce FeO
+        outputs["mass_Fe_to_FeO"] = energy_mass_per_tonne["mass_Fe_to_FeO_tLS"] * steel_production
+        # Total kg Fe from scrap
+        outputs["mass_Fe_from_scrap"] = (
+            energy_mass_per_tonne["mass_Fe_scrap_per_tLS"] * steel_production
+        )
         # Total kg Steel formed from scrap per ton scrap
         outputs["mass_steel_per_unit_scrap"] = energy_mass_per_tonne["mass_steel_per_tscrap"]
 
@@ -435,8 +435,8 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         # '12. EAF Mass & Energy Balance!D86' TODO: Hardcoded value?
         moles_O2_to_FeO_tLS = moles_Fe_to_FeO_tLS * 0.5
 
-        output_dict["mass_Fe_scrap_per_tLS"] = output_dict["mass_Fe_scrap_per_tscrap"] * (
-            output_dict["mass_scrap_per_tLS"] / 1000
+        output_dict["mass_Fe_scrap_per_tLS"] = (
+            output_dict["mass_Fe_scrap_per_tscrap"] * (output_dict["mass_scrap_per_tLS"])
         )
 
         # method causes small differences rather than using MMbtu_to_MJ = 1055.0
