@@ -21,8 +21,7 @@ from h2integrate.tools.constants import (
 from h2integrate.core.model_baseclasses import PerformanceModelBaseClass
 
 
-# CMU EAF model pythonization
-# NOTE: values are largely in metric system, all tons = metric tons
+# NOTE: values are in metric system, all tons = metric tons
 
 
 @define
@@ -153,7 +152,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
         # Add outputs
         self.add_output(
-            "mass_slag",
+            "slag_out",
             val=0.0,
             shape=n_timesteps,
             units="kg",
@@ -269,7 +268,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
             outputs[f"{feedstock_type}_consumed"] = steel_production * consumption_rate
 
         # Total kg slag
-        outputs["mass_slag"] = energy_mass_per_tonne["mass_slag_per_tLS"] * steel_production
+        outputs["slag_out"] = energy_mass_per_tonne["mass_slag_per_tLS"] * steel_production
         # Total kg MgO in slag
         outputs["mass_MgO_slag"] = energy_mass_per_tonne["mass_MgO_slag_per_tLS"] * steel_production
         # Total kg FeO in slag

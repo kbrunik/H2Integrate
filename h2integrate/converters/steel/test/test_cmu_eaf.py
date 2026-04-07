@@ -133,7 +133,7 @@ def test_energy_mass_balance_per_unit(
     prob.run_model()
 
     with subtests.test("kg_slag"):
-        assert pytest.approx(sum(prob.get_val("mass_slag")), rel=1e-6) == 46.30390896654156
+        assert pytest.approx(sum(prob.get_val("slag_out")), rel=1e-6) == 46.30390896654156
 
     with subtests.test("kg_MGO_in_slag"):
         assert pytest.approx(sum(prob.get_val("mass_MgO_slag")), rel=1e-6) == 5.556469075984987
