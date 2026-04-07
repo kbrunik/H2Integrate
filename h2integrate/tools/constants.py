@@ -26,4 +26,5 @@ SIO2_MW = 60.00  # Molecular weight of Silicon Dioxide (Silica) in g/mol
 CAO_MW = 56.00  # Molecular weight of Calcium Oxide (Lime) in g/mol
 MGO_MW = 40.00  # Molecular weight of Magnesium Oxide in g/mol
 FE_MW = 55.80  # Molecular weight of Iron in g/mol
+AL2O3_MW = 102.00  # Molecular weight of Aluminum Oxide (Al2O3) in g/mol
 LHV_CH4_MJ_PER_KG = 50.0  # Lower Heating Value of Natural Gas (Methane) in MJ/kg
