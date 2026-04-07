@@ -38,6 +38,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceConfig(BaseConfig):
             values of 94% mass Fe and 1% mass SiO2 in scrap.
         energy_mass_balance_dict (dict): dictionary with inputs for energy and mass
             balance calculations. Defaults are based on values from CMU decarbSTEEL EAF model.
+            TODO: add the inputs for the dict here.
 
     """
 
@@ -395,6 +396,8 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
             1 - pct_carbon_steel
         )
 
+        ###### forward mass calculation on a per tonne of liquid steel basis #################
+
         # NOTE calculated per ton liquid steel (tLS)
         mass_scrap_per_tLS = (mass_basis_scrap / output_dict["mass_steel_per_tscrap"]) * 1000
 
@@ -404,8 +407,6 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         mass_pct_SiO2_scrap = scrap_composition["SiO2"]
         # kg SiO2 from scrap per ton LS, '12. EAF Mass & Energy Balance!D71
         mass_SiO2_scrap_per_tLS = mass_scrap_per_tLS * mass_pct_SiO2_scrap
-
-        ###### forward mass calculation on a per tonne of liquid steel basis #################
         # total kg SiO2 in slag per ton LS, '12. EAF Mass & Energy Balance!D74'
         mass_SiO2_slag_per_tLS = mass_SiO2_scrap_per_tLS
         # total kg Al2O3 in slag per ton LS, '12. EAF Mass & Energy Balance!D75'
