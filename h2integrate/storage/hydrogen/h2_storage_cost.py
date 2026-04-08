@@ -25,9 +25,8 @@ class HydrogenStorageBaseCostModelConfig(BaseConfig):
     - `licensing_permits`
     - `compressor_om`
     - `facility_om`
-    - `inlet_pressure_bar`
-    - `storage_pressure_bar`
-    - `storage_compressor_isen_eff` : Isentropic efficiency of storage compressor
+    - `inlet_pressure_bar` # Update in other modesl besides comp gas?
+    - `storage_pressure_bar` - max 700 # Update in other modesl besides comp gas?
     """
 
     max_capacity: float | None = field(default=None)
@@ -47,7 +46,7 @@ class HydrogenStorageBaseCostModelConfig(BaseConfig):
     compressor_om: float = field(default=0.04, validator=range_val(0, 1))
     facility_om: float = field(default=0.01, validator=range_val(0, 1))
     inlet_pressure_bar: float = field(default=20, validator=gte_zero)
-    storage_pressure_bar: float = field(default=200, validator=gte_zero)
+    storage_pressure_bar: float = field(default=200, validator=range_val(0, 700))
 
     def __attrs_post_init__(self):
         undefined_capacities = self.max_capacity is None or self.max_charge_rate is None
@@ -580,10 +579,11 @@ class CompressedGasStorageCostModel(HydrogenStorageBaseCostModel):
         terminal_capacity_kg_d = units.convert_units(
             inputs["storage_capacity"], f"({self.config.commodity_units})", "kg/day"
         )
-        n_compressors = terminal_capacity_kg_d / 24 / 50
+        n_compressors = terminal_capacity_kg_d / 24 / 50  # Cell B59
         # Not sure where the 50 comes from in HDSAM - using rule of thumb of 1 unit per 50 kg/hr?
         isentropic_efficiency = 0.75
         storage_compressor = Compressor(
+            compressor_type="storage",
             p_inlet=self.config.inlet_pressure_bar,
             p_outlet=self.config.storage_pressure_bar,
             flow_rate_kg_d=terminal_capacity_kg_d,
@@ -595,20 +595,99 @@ class CompressedGasStorageCostModel(HydrogenStorageBaseCostModel):
         # Calculate CAPEX
         # ============================================================================
         # Installed capital cost per kg from rows 158-180 of "Compressed Gas H2 Terminal" in [1]
-
-        # "Truck Loading Compressor" from HDSAM is not included
+        # Capex for compressor and storage scales with size
+        # Capex for piping, plumbing, electrical, instrumentation, and buildings is constant
+        # CEPCI data from HDSAM used to convert most costs to 2018, for those without a CEPCI index
+        # the BLS CPI calcualtor was used instead: https://data.bls.gov/cgi-bin/cpicalc.pl
+        # "Truck Loading Compressor" and "Truck Scale" from HDSAM are not included
 
         # Storage Compressor
         storage_compressor.compressor_power()
         unit_power_kw, system_power_kw = storage_compressor.compressor_system_power()
         compressor_capex_2016, _ = storage_compressor.compressor_costs()
-        1.36013289036545 / 1.2890365448505 * compressor_capex_2016
+        compressor_capex = compressor_capex_2016 * 1.36013289036545 / 1.2890365448505
+        # Values taken from CEPCI table in "Feedstock & Utility Prices"
 
         # Compressed Gas H2 Storage
-        # tank_capex_2018
+        # Currently using a linear fit between 350 and 700 bar (the two discrete HDSAM levels)
+        capex_per_kg_350_bar_2013 = 1560  # "Cost Data" row 89
+        capex_per_kg_700_bar_2013 = 2340  # "Cost Data" row 96
+        tank_capex_per_kg_2013 = (
+            capex_per_kg_350_bar_2013
+            + (capex_per_kg_700_bar_2013 - capex_per_kg_350_bar_2013)
+            * (self.storage_pressure_bar - 350)
+            / 350
+        )
+        capex_2013 = tank_capex_per_kg_2013 * self.max_capacity
+        tank_capex = capex_2013 * 1.36013289036545 / 1.22431893687708
 
-        # Remainder of Terminal
-        # piping_supply_dischage_headers
-        # plumbing_electrical_instsrumentation
-        # buildings_structures
-        # "Truck scale" is ignore
+        # Piping - simplifying a bit from HDSAM since this is a "drop in the bucket"
+        pipe_length_m = 98.3  # Using the value for starting case instead of complex HDSAM calc.
+        pipe_capex_per_m_2022 = 300  # Using H2A base case instead of complex HDSAM calc.
+        pipe_capex_2022 = pipe_length_m * pipe_capex_per_m_2022
+        pipe_capex = pipe_capex_2022 * 1.53471220137887 / 2.35626102292769
+
+        # Plumbing, electrical, instrumentation capex = "pei"
+        pei_capex_2022 = 20454
+        pei_capex = pei_capex_2022 * 1.45283525933889 / 2.0454178984144
+
+        # Buildings and structures
+        buildings_capex_2022 = 370029
+        buildings_capex = buildings_capex_2022 * 1.33340822287126 / 1.85014603459897
+
+        # Land - simplifying and taking constants
+        land_required_m2 = 5236
+        land_capex_per_m2_2022 = 12.35
+        land_capex_2022 = land_required_m2 * land_capex_per_m2_2022
+        land_capex = land_capex_2022 * 0.88  # Using CPI to convert to 2018 no CEPCI for land)
+
+        # Other
+        depreciable_capex = compressor_capex + tank_capex + pipe_capex + pei_capex + buildings_capex
+        site_preparation_pct = 0.05
+        engineering_design_pct = 0.1
+        project_contingency_pct = 0.1
+        licensing_pct = 0.0
+        permitting_pct = 0.03
+        owner_cost_pct = 0.12
+        total_other_capex_pct = (
+            site_preparation_pct
+            + engineering_design_pct
+            + project_contingency_pct
+            + licensing_pct
+            + permitting_pct
+            + owner_cost_pct
+        )
+        other_capex_2022 = depreciable_capex * total_other_capex_pct
+        other_capex = other_capex_2022 * 0.88  # Using CPI to convert to 2018
+
+        # Final, total installed cost:
+        installed_capex = depreciable_capex + land_capex + other_capex
+
+        # # ============================================================================
+        # # Calculate OPEX - NEEDS TO BE UPDATED
+        # # ============================================================================
+        # # Operations and Maintenance costs [3]
+        # # Labor
+        # # Base case is 1 operator, 24 hours a day, 7 days a week for a 100,000 kg/day
+        # # average capacity facility. Scaling factor of 0.25 is used for other sized facilities
+        # annual_hours = 8760 * (system_flow_rate / 100000) ** 0.25
+        # overhead = 0.5
+        # labor = (annual_hours * labor_rate) * (1 + overhead)  # Burdened labor cost
+        # insurance_cost = insurance * installed_capex
+        # property_taxes_cost = property_taxes * installed_capex
+        # licensing_permits_cost = licensing_permits * installed_capex
+        # comp_op_maint = comp_om * comp_capex
+        # facility_op_maint = facility_om * (installed_capex - comp_capex)
+
+        # # O&M excludes electricity requirements
+        # total_om = (
+        #     labor
+        #     + insurance_cost
+        #     + licensing_permits_cost
+        #     + property_taxes_cost
+        #     + comp_op_maint
+        #     + facility_op_maint
+        # )
+
+        outputs["CapEx"] = installed_capex
+        # outputs["OpEx"] = total_om
