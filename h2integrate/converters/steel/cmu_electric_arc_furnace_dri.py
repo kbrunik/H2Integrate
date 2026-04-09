@@ -351,6 +351,34 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         outputs["mass_steel_per_unit_dri"] = energy_mass_per_tonne["mass_steel_per_tdri"]
 
     def energy_mass_balance_per_unit(self, inputs):
+        """Computes the energy and mass balance for the EAF fed with dri and scrap on a
+            per ton of dri or liquid steel basis.
+        Returns:
+            output_dict (dict): Dictionary with the amount of feedstocks and energy used per
+                ton of steel.
+                - mass_slag_per_tDRI (kg/t): Total mass of slag produced per ton of DRI.
+                - mass_MgO_slag_per_tDRI (kg/t): Mass of MgO in slag per ton of DRI.
+                - mass_FeO_slag_per_tDRI (kg/t): Mass of FeO in slag per ton of DRI.
+                - mass_Fe_to_FeO_per_tDRI (kg/t): Mass of Fe consumed to produce FeO per ton DRI.
+                - mass_Fe_DRI_per_tDRI (kg/t): Mass of Fe from DRI per ton of DRI.
+                - mass_steel_per_tDRI (kg/t): Mass of steel formed from scrap per ton of DRI.
+                - natural_gas_per_tLS (MMBtu/t): Natural gas usage per ton of liquid steel.
+                - electrodes_per_tLS (kg/t): Electrode usage per ton of liquid steel.
+                - mass_scrap_per_tLS (t/t): Mass of scrap per ton of liquid steel.
+                - mass_gangue_per_tLS (kg/t): Mass of gangue per ton of liquid steel.
+                - mass_slag_per_tLS (kg/t): Mass of slag per ton of liquid steel.
+                - mass_MgO_slag_per_tLS (kg/t): Mass of MgO in slag per ton of liquid steel.
+                - mass_FeO_slag_per_tLS (kg/t): Mass of FeO in slag per ton of liquid steel.
+                - coal_per_tLS (t/t): Mass of coal per ton of liquid steel.
+                - oxygen_per_tLS (Nm^3/t): Normal cubic meters of oxygen per ton of liquid steel.
+                - burnt_doloma_per_tLS (t/t): Mass of burnt doloma per ton of liquid steel.
+                - burnt_lime_per_tLS (t/t): Mass of burnt lime per ton of liquid steel.
+                - mass_flux_per_tLS (kg/t): Mass of flux (lime and doloma) per ton of liquid steel.
+                - EAF_scrap_heat_loss_pct (%): Percentage of heat loss in EAF with scrap-only case.
+                - electricity_per_tLS (kWh/t): Total electricity consumption per ton of liquid
+                    steel for EAF with scrap-only case, including heat loss adjustment.
+
+        """
         output_dict = {}
         # Including DRI in feed (assumed constants in feedstocks)
         output_dict["natural_gas_per_tLS"] = self.config.energy_mass_balance_dict[
@@ -450,16 +478,18 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # '12. EAF Mass & Energy Balance!D186'
         moles_Fe_to_FeO = add_moles_FeO_needed
         # kg Fe consumed to produce FeO per tDRI, '12. EAF Mass & Energy Balance!D187'
-        output_dict["mass_Fe_to_FeO"] = moles_Fe_to_FeO * FE_MW
+        output_dict["mass_Fe_to_FeO_per_tDRI"] = moles_Fe_to_FeO * FE_MW
 
         # kg Fe from DRI per tDRI, '12. EAF Mass & Energy Balance!D189'
-        mass_Fe_DRI_per_tDRI = (
+        output_dict["mass_Fe_DRI_per_tDRI"] = (
             mass_basis_DRI * self.config.DRI_composition["Fe"] - output_dict["mass_Fe_to_FeO"]
         )
         # kg Fe from scrap per tDRI, '12. EAF Mass & Energy Balance!D190'
         output_dict["mass_Fe_scrap_per_tDRI"] = mass_scrap_from_basis * scrap_composition["Fe"]
         # kg Fe from DRI + scrap per tDRI, '12. EAF Mass & Energy Balance!D191'
-        mass_Fe_per_tDRI = mass_Fe_DRI_per_tDRI + output_dict["mass_Fe_scrap_per_tDRI"]
+        mass_Fe_per_tDRI = (
+            output_dict["mass_Fe_DRI_per_tDRI"] + output_dict["mass_Fe_scrap_per_tDRI"]
+        )
         # kg Steel formed from DRI + scrap per tDRI, '12. EAF Mass & Energy Balance!D192'
         output_dict["mass_steel_per_tDRI"] = mass_Fe_per_tDRI / (1 - pct_carbon_steel)
 
@@ -475,18 +505,18 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         ) * 1000
 
         # kg gangue per tLS from DRI, '12. EAF Mass & Energy Balance!D198'
-        mass_gangue_per_tLS = (
+        output_dict["mass_gangue_per_tLS"] = (
             output_dict["mass_DRI_per_tLS"] * self.config.DRI_composition["gangue"]
         )
         # kg/kg SiO2 to Alumina Ratio in DRI,
         # '12. EAF Mass & Energy Balance!D199' > '12. EAF Mass & Energy Balance!D162'
         SiO2_ratio = SiO2_ratio
         # kg SiO2 per tLS from DRI, '12. EAF Mass & Energy Balance!D200'
-        mass_SiO2_DRI_per_tLS = (mass_gangue_per_tLS * SiO2_ratio) / (SiO2_ratio + 1)
+        mass_SiO2_DRI_per_tLS = (output_dict["mass_gangue_per_tLS"] * SiO2_ratio) / (SiO2_ratio + 1)
         # kg SiO2 per tLS from scrap, '12. EAF Mass & Energy Balance!D201'
         mass_SiO2_scrap_per_tLS = output_dict["mass_scrap_per_tLS"] * mass_pct_SiO2_scrap
         # kg Al2O3 per tLS from DRI, '12. EAF Mass & Energy Balance!D202'
-        mass_Al2O3_per_tLS = mass_gangue_per_tLS / (SiO2_ratio + 1)
+        mass_Al2O3_per_tLS = output_dict["mass_gangue_per_tLS"] / (SiO2_ratio + 1)
 
         # kg SiO2 in slag per tLS, '12. EAF Mass & Energy Balance!D205'
         mass_SiO2_slag_per_tLS = mass_SiO2_DRI_per_tLS + mass_SiO2_scrap_per_tLS
@@ -497,13 +527,13 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         mass_CaO_slag_per_tLS = slag_B3 * (mass_SiO2_slag_per_tLS + mass_Al2O3_slag_per_tLS)
 
         # kg slag per tLS, '12. EAF Mass & Energy Balance!D211'
-        mass_slag_per_tLS = (
+        output_dict["mass_slag_per_tLS"] = (
             mass_SiO2_slag_per_tLS + mass_Al2O3_slag_per_tLS + mass_CaO_slag_per_tLS
         ) / (1 - pct_MgO_slag - pct_FeO_slag)
         # kg MgO in slag per tLS, '12. EAF Mass & Energy Balance!D212'
-        mass_MgO_slag_per_tLS = pct_MgO_slag * mass_slag_per_tLS
+        output_dict["mass_MgO_slag_per_tLS"] = pct_MgO_slag * output_dict["mass_slag_per_tLS"]
         # kg FeO in slag per tLS, '12. EAF Mass & Energy Balance!D213'
-        mass_FeO_slag_per_tLS = pct_FeO_slag * mass_slag_per_tLS
+        output_dict["mass_FeO_slag_per_tLS"] = pct_FeO_slag * output_dict["mass_slag_per_tLS"]
 
         # kg FeO from DRI per tLS, '12. EAF Mass & Energy Balance!D215'
         mass_FeO_DRI_per_tLS = output_dict["mass_DRI_per_tLS"] * self.config.DRI_composition["FeO"]
@@ -511,7 +541,7 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # kmol FeO from DRI per tLS, '12. EAF Mass & Energy Balance!D216'
         mole_FeO_DRI_per_tLS = mass_FeO_DRI_per_tLS / FEO_MW
         # kg additional FeO required from slag per tLS, '12. EAF Mass & Energy Balance!D217'
-        add_mass_FeO_needed_tLS = mass_FeO_slag_per_tLS - mass_FeO_DRI_per_tLS
+        add_mass_FeO_needed_tLS = output_dict["mass_FeO_slag_per_tLS"] - mass_FeO_DRI_per_tLS
         # kmol additional FeO required from slag per tLS, '12. EAF Mass & Energy Balance!D218'
         add_moles_FeO_needed_tLS = add_mass_FeO_needed_tLS / FEO_MW
         # kmol Fe consumed to produce FeO per tLS, '12. EAF Mass & Energy Balance!D219'
@@ -588,7 +618,7 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # (kg/kg), '12. EAF Mass & Energy Balance!D254'
         CaO_MgO_ratio = self.config.energy_mass_balance_dict["CaO_MgO_ratio"]
         # (kg/tLS), '12. EAF Mass & Energy Balance!D255'
-        mass_MgO_doloma = mass_MgO_slag_per_tLS
+        mass_MgO_doloma = output_dict["mass_MgO_slag_per_tLS"]
         # (kg/tLS), '12. EAF Mass & Energy Balance!D256'
         mass_CaO_doloma = mass_MgO_doloma * CaO_MgO_ratio
         # (kg/tLS), '12. EAF Mass & Energy Balance!D257'
@@ -715,7 +745,7 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # H (J/mol) MgO, '12. EAF Mass & Energy Balance!D272' > '14. Enthalpy Calculations!C181'
         flux_MgO_J_mol = -6.0160e05
         # kg MgO, '12. EAF Mass & Energy Balance!F272' > '12. EAF Mass & Energy Balance!D212'
-        flux_MgO_kg = mass_MgO_slag_per_tLS
+        flux_MgO_kg = output_dict["mass_MgO_slag_per_tLS"]
         # kmol MgO, '12. EAF Mass & Energy Balance!E272'
         flux_MgO_n_kmol = flux_MgO_kg / MGO_MW
         # kJ MgO, '12. EAF Mass & Energy Balance!G272'
@@ -783,7 +813,7 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
 
         # kg FeO in slag product,
         # '12. EAF Mass & Energy Balance!F281' > '12. EAF Mass & Energy Balance!D213'
-        slag_FeO_kg = mass_FeO_slag_per_tLS
+        slag_FeO_kg = output_dict["mass_FeO_slag_per_tLS"]
         # kg SiO2 in slag product,
         # '12. EAF Mass & Energy Balance!F282' > '12. EAF Mass & Energy Balance!D205'
         slag_SiO2_kg = mass_SiO2_slag_per_tLS
@@ -795,7 +825,7 @@ class ElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         slag_CaO_kg = mass_CaO_slag_per_tLS
         # kg MgO in slag product,
         # '12. EAF Mass & Energy Balance!F285' > '12. EAF Mass & Energy Balance!D212'
-        slag_MgO_kg = mass_MgO_slag_per_tLS
+        slag_MgO_kg = output_dict["mass_MgO_slag_per_tLS"]
         # H (MJ/kg) BF grade pellets estimated enthalpy of liquid slag (Bjorkvall approach),
         # '14. Enthalpy Calculations!J14'
         BF_pellets_MJ_kg = -8.377283654515320e00
