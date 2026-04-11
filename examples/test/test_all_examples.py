@@ -1955,7 +1955,7 @@ def test_iron_mapping_example(subtests, temp_copy_of_example):
     # Plot LCOI results from cases.sql file, save sql data to csv
     fig, ax, lcoi_layer_gdf = plot_geospatial_point_heat_map(
         case_results_fpath=cases_csv_fpath,
-        metric_to_plot="finance_subgroup_pig_iron.LCOP (USD/kg)",
+        metric_to_plot="finance_subgroup_sponge_iron.LCOS (USD/kg)",
         map_preferences={
             "figsize": (10, 8),
             "colorbar_label": "Levelized Cost of\nIron [$/kg]",
@@ -2227,7 +2227,7 @@ def test_iron_dri_eaf_example(subtests, temp_copy_of_example):
         assert pytest.approx(lcoi, rel=1e-4) == 135.3741358811098
 
     with subtests.test("Value check on LCOP"):
-        lcop = h2i.model.get_val("finance_subgroup_pig_iron.LCOP", units="USD/t")[0]
+        lcop = h2i.model.get_val("finance_subgroup_sponge_iron.LCOS", units="USD/t")[0]
         assert pytest.approx(lcop, rel=1e-4) == 359.670379351
 
     with subtests.test("Value check on LCOS"):
