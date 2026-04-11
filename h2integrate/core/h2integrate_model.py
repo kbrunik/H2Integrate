@@ -1053,6 +1053,11 @@ class H2IntegrateModel:
                         f"{dest_tech}.{transport_item}_consumed",
                         f"{source_tech}.{transport_item}_consumed",
                     )
+                    # Connect the feedstock performance model output to the cost model input
+                    self.plant.connect(
+                        f"{source_tech}_source.{transport_item}_out",
+                        f"{source_tech}.{transport_item}_out",
+                    )
 
                 if perf_model_name == "FeedstockPerformanceModel":
                     source_tech = f"{source_tech}_source"
@@ -1342,9 +1347,10 @@ class H2IntegrateModel:
     def run(self):
         # do model setup based on the driver config
         # might add a recorder, driver, set solver tolerances, etc
-        if self.state < State.RUN:
+        if self.state < State.SETUP:
             self.prob.setup()
 
+        if self.state < State.RUN:
             # OpenMDAO will skip this step if it encounters an issue leading to silent failures
             # TODO: remove this step when OpenMDAO implements cursor closure
             if self.recorder_path is not None:
