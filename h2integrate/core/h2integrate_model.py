@@ -508,6 +508,7 @@ class H2IntegrateModel:
                 # and in combined_performance_and_cost_models
                 perf_model = individual_tech_config.get("performance_model", {}).get("model")
                 cost_model = individual_tech_config.get("cost_model", {}).get("model")
+
                 individual_tech_config.get("finance_model", {}).get("model")
                 if (
                     perf_model
@@ -582,6 +583,7 @@ class H2IntegrateModel:
 
         for tech_name, individual_tech_config in self.technology_config["technologies"].items():
             cost_model = individual_tech_config.get("cost_model", {}).get("model")
+
             if cost_model == "FeedstockCostModel":
                 comp = self.supported_models[cost_model](
                     driver_config=self.driver_config,
@@ -594,6 +596,9 @@ class H2IntegrateModel:
         # Generalized function to process model definitions
         model_name = individual_tech_config[model_type]["model"]
         model_object = self.supported_models[model_name]
+
+        self._check_time_step(model_name, model_object)
+
         om_model_object = tech_group.add_subsystem(
             model_name,
             model_object(
@@ -603,7 +608,22 @@ class H2IntegrateModel:
             ),
             promotes=["*"],
         )
+
         return om_model_object
+
+    def _check_time_step(self, model_name, model_object):
+        dt = int(self.plant_config["plant"]["simulation"]["dt"])
+
+        min_ts = model_object._time_step_bounds[0]
+        max_ts = model_object._time_step_bounds[1]
+        if dt < min_ts or dt > max_ts:
+            msg = (
+                f"Model {model_name} is compatible with time steps "
+                f"between {min_ts} (s) and {max_ts} (s), but a time step of {dt} (s) "
+                "was specified. Please set plant_config['plant']['simulation']['dt'] to a"
+                f" value within the range [{min_ts}, {max_ts}]."
+            )
+            raise ValueError(msg)
 
     def create_finance_model(self):
         """
