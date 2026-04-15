@@ -1,5 +1,4 @@
 import os
-import shutil
 import importlib
 from pathlib import Path
 
@@ -8,24 +7,12 @@ import pandas as pd
 import pytest
 import openmdao.api as om
 
-from h2integrate import ROOT_DIR, EXAMPLE_DIR
+from h2integrate import ROOT_DIR
 from h2integrate.core.file_utils import load_yaml
 from h2integrate.core.h2integrate_model import H2IntegrateModel
 
 
 ROOT = Path(__file__).parents[1]
-
-
-@pytest.fixture(scope="function")
-def temp_copy_of_example(temp_dir, example_folder, resource_example_folder):
-    original = EXAMPLE_DIR / example_folder
-    shutil.copytree(original, temp_dir / example_folder, dirs_exist_ok=True)
-    if resource_example_folder is not None:
-        secondary = EXAMPLE_DIR / resource_example_folder
-        shutil.copytree(secondary, temp_dir / resource_example_folder, dirs_exist_ok=True)
-    os.chdir(temp_dir / example_folder)
-    yield temp_dir / example_folder
-    os.chdir(Path(__file__).parent)
 
 
 # docs fencepost start: DO NOT REMOVE
@@ -387,6 +374,13 @@ def test_ammonia_synloop_example(subtests, temp_copy_of_example):
                 model.prob.get_val("finance_subgroup_nh3.LCOA", units="USD/kg")[0], rel=1e-6
             )
             == 1.1018637096646757
+        )
+    with subtests.test("Check LCON"):
+        assert (
+            pytest.approx(
+                model.prob.get_val("finance_subgroup_n2.LCON", units="USD/t")[0], rel=1e-6
+            )
+            == 5.03140888
         )
 
 
@@ -827,6 +821,14 @@ def test_hydrogen_dispatch_example(subtests, temp_copy_of_example):
             )
             == 7.564000289456695
         )
+    with subtests.test("Check LCOO"):
+        assert (
+            pytest.approx(
+                model.prob.get_val("finance_subgroup_oxygen.LCOO", units="USD/kg")[0],
+                rel=1e-5,
+            )
+            == 0.666523050
+        )
 
 
 @pytest.mark.integration
@@ -1062,6 +1064,10 @@ def test_natural_gas_example(subtests, temp_copy_of_example):
         ng_consumed = model.prob.get_val("ng_feedstock.natural_gas_consumed", units="MMBtu/h")
         expected_opex = 4.2 * ng_consumed.sum()  # price = 4.2 $/MMBtu
         assert pytest.approx(ng_opex, rel=1e-6) == expected_opex
+
+    with subtests.test("Check feedstock capacity factor"):
+        ng_cf = model.prob.get_val("ng_feedstock.capacity_factor", units="unitless").mean()
+        assert pytest.approx(ng_cf, rel=1e-6) == 0.5676562763739097
 
 
 @pytest.mark.integration
@@ -1935,6 +1941,7 @@ def test_24_solar_battery_grid_example(subtests, temp_copy_of_example):
 @pytest.mark.parametrize(
     "example_folder,resource_example_folder", [("21_iron_examples/iron_mapping", None)]
 )
+@pytest.mark.skipif(importlib.util.find_spec("geopandas") is None, reason="`gis` not installed")
 def test_iron_mapping_example(subtests, temp_copy_of_example):
     import geopandas as gpd
     import matplotlib

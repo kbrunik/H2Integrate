@@ -182,9 +182,37 @@ def test_unsupported_simulation_parameters(temp_dir):
     with pytest.raises(ValueError, match="greater than 1-year"):
         load_plant_yaml(plant_config_data_ntimesteps)
 
-    # check that error is thrown when loading config with invalid time interval
-    with pytest.raises(ValueError, match="with a time step that"):
-        load_plant_yaml(plant_config_data_dt)
+
+@pytest.mark.unit
+def test_check_time_step_with_model_bounds_allows_supported_dt():
+    class DummyModel:
+        _time_step_bounds = (900, 3600)
+
+    model = object.__new__(H2IntegrateModel)
+    model.plant_config = {"plant": {"simulation": {"dt": 1800}}}
+
+    model._check_time_step("DummyModel", DummyModel)
+
+
+@pytest.mark.unit
+def test_check_time_step_with_model_bounds_raises_for_unsupported_dt():
+    class DummyModel:
+        _time_step_bounds = (
+            900,
+            3600,
+        )  # (min, max) time step lengths (in seconds) compatible with this model
+
+    model = object.__new__(H2IntegrateModel)
+    model.plant_config = {"plant": {"simulation": {"dt": 7200}}}
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"Model DummyModel is compatible with time steps between "
+            r"900 \(s\) and 3600 \(s\), but a time step of 7200 \(s\) was specified"
+        ),
+    ):
+        model._check_time_step("DummyModel", DummyModel)
 
 
 @pytest.mark.unit
@@ -322,6 +350,33 @@ def test_resource_connection_error_missing_resource(temp_dir):
     # Clean up temporary YAML files
     temp_plant_config.unlink(missing_ok=True)
     temp_highlevel_yaml.unlink(missing_ok=True)
+
+
+@pytest.mark.unit
+def test_no_resource_connection_error_resource_to_multiple_techs(temp_dir):
+    # Path to the original plant_config.yaml and high-level yaml in the example directory
+
+    driver_config = load_driver_yaml(EXAMPLE_DIR / "08_wind_electrolyzer" / "driver_config.yaml")
+    tech_config = load_tech_yaml(EXAMPLE_DIR / "08_wind_electrolyzer" / "tech_config.yaml")
+    plant_config = load_plant_yaml(EXAMPLE_DIR / "08_wind_electrolyzer" / "plant_config.yaml")
+    # Add a second wind technology
+    wind_tech = tech_config["technologies"]["wind"]
+    tech_config["technologies"].update({"wind_plant2": wind_tech})
+    resource_to_tech_connections = [
+        ["site.wind_resource", "wind", "wind_resource_data"],
+        ["site.wind_resource", "wind_plant2", "wind_resource_data"],
+    ]
+    plant_config["resource_to_tech_connections"] = resource_to_tech_connections
+    input_config = {
+        "plant_config": plant_config,
+        "technology_config": tech_config,
+        "driver_config": driver_config,
+    }
+    h2i_model = H2IntegrateModel(input_config)
+    h2i_model.setup()
+    # Need to call final_setup to trigger the potential error related to the resource connections
+    h2i_model.prob.final_setup()
+    assert True
 
 
 @pytest.mark.unit
