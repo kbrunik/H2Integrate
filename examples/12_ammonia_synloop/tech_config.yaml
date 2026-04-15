@@ -149,8 +149,8 @@ technologies:
     control_strategy:
       model: SimpleStorageOpenLoopController
     cost_model:
-      # model: SaltCavernStorageCostModel
-      model: CompressedGasStorageCostModel
+      model: SaltCavernStorageCostModel
+      # model: CompressedGasStorageCostModel
     model_inputs:
       shared_parameters:
         commodity: hydrogen

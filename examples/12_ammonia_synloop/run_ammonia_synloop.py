@@ -26,6 +26,5 @@ for casename in caselist:
     demand_profile = np.ones(8760) * 640.0
     model.setup()
     model.prob.set_val("battery.electricity_demand", demand_profile, units="MW")
-    model.prob.set_val("h2_storage.hydrogen_in", np.full(8760, 1568.7089), units="kg/h")
     model.run()
     model.post_process()

@@ -620,7 +620,8 @@ class CompressedGasStorageCostModel(HydrogenStorageBaseCostModel):
             * (self.config.storage_pressure_bar - 350)
             / 350
         )
-        capex_2013 = tank_capex_per_kg_2013 * storage_capacity_kg
+        tank_installation_factor = 1.3
+        capex_2013 = tank_capex_per_kg_2013 * storage_capacity_kg * tank_installation_factor
         tank_capex = capex_2013 * 1.36013289036545 / 1.22431893687708
 
         # Piping - simplifying a bit from HDSAM since this is a "drop in the bucket"
