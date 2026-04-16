@@ -30,6 +30,11 @@ class ElectricArcFurnacePerformanceBaseConfig(BaseConfig):
 
 
 class ElectricArcFurnacePlantBasePerformanceComponent(PerformanceModelBaseClass):
+    _time_step_bounds = (
+        3600,
+        3600,
+    )  # (min, max) time step lengths (in seconds) compatible with this model
+
     def initialize(self):
         super().initialize()
         self.commodity = "steel"
@@ -299,6 +304,11 @@ class ElectricArcFurnacePlantBaseCostComponent(CostModelBaseClass):
         config (ElectricArcFurnaceCostBaseConfig): configuration class
         coeff_df (pd.DataFrame): cost coefficient dataframe
     """
+
+    _time_step_bounds = (
+        3600,
+        3600,
+    )  # (min, max) time step lengths (in seconds) compatible with this model
 
     def setup(self):
         n_timesteps = self.options["plant_config"]["plant"]["simulation"]["n_timesteps"]
