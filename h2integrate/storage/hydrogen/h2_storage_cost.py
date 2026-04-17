@@ -12,21 +12,25 @@ from h2integrate.storage.hydrogen.h2_transport.h2_compression import Compressor
 class HydrogenStorageBaseCostModelConfig(BaseConfig):
     """Base config class for HydrogenStorageBaseCostModel.
 
-    Fields:
-    - `max_capacity`
-    - `max_charge_rate`
-    - `sizing_mode`
-    - `commodity_name`,
-    - `commodity_units`
-    - `cost_year`
-    - `labor_rate`
-    - `insurance`
-    - `property_taxes`,
-    - `licensing_permits`
-    - `compressor_om`
-    - `facility_om`
-    - `inlet_pressure_bar` # Update in other modesl besides comp gas?
-    - `storage_pressure_bar` - max 700 # Update in other modesl besides comp gas?
+    Attributes:
+    - max_capacity (float): Maximum storage capacity (kg)
+    - max_charge_rate (float): Maximum charging rate (kg/h)
+    - sizing_mode (str): Mode for sizing storage (auto or set)
+    - commodity_name (str): Name of the commodity
+    - commodity_rate_units (str): Units of the commodity
+    - cost_year (int): Year for cost calculations
+    - labor_rate (float): Labor rate for cost calculations
+    - insurance (float): Insurance cost as a fraction of total cost
+    - property_taxes (float): Property taxes as a fraction of total cost
+    - licensing_permits (float): Licensing and permits cost as a fraction of total cost
+    - compressor_om (float): Compressor operation and maintenance cost as a fraction of total cost
+    - facility_om (float): Facility operation and maintenance cost as a fraction of total cost
+    - inlet_pressure_bar (float): Inlet pressure for compressed gas storage (bar)
+    - storage_pressure_bar (float): Storage pressure for compressed gas storage (bar) - max 700
+    - cg_capex_per_kg_350_bar (float): Capital cost per kg for compressed gas storage at 350 bar
+        Default is $1200 (2013 dollars) from HDSAM, converted to 2018 dollars using CEPCI.
+    - cg_capex_per_kg_700_bar (float): Capital cost per kg for compressed gas storage at 700 bar
+        Default is $1800 (2013 dollars) from HDSAM, converted to 2018 dollars using CEPCI.
     """
 
     max_capacity: float | None = field(default=None)
@@ -36,7 +40,7 @@ class HydrogenStorageBaseCostModelConfig(BaseConfig):
     )
 
     commodity_name: str = field(default="hydrogen")
-    commodity_units: str = field(default="kg/h", validator=contains(["kg/h", "g/h", "t/h"]))
+    commodity_rate_units: str = field(default="kg/h", validator=contains(["kg/h", "g/h", "t/h"]))
 
     cost_year: int = field(default=2018, converter=int, validator=contains([2018]))
     labor_rate: float = field(default=37.39817, validator=gte_zero)
@@ -47,6 +51,8 @@ class HydrogenStorageBaseCostModelConfig(BaseConfig):
     facility_om: float = field(default=0.01, validator=range_val(0, 1))
     inlet_pressure_bar: float = field(default=20, validator=gte_zero)
     storage_pressure_bar: float = field(default=200, validator=range_val(0, 700))
+    cg_capex_per_kg_350_bar: float = field(default=1333.11625, validator=gte_zero)
+    cg_capex_per_kg_700_bar: float = field(default=1999.67437, validator=gte_zero)
 
     def __attrs_post_init__(self):
         undefined_capacities = self.max_capacity is None or self.max_charge_rate is None
@@ -80,7 +86,7 @@ class HydrogenStorageBaseCostModelConfig(BaseConfig):
             "max_capacity",
             "max_charge_rate",
             "commodity_name",
-            "commodity_units",
+            "commodity_rate_units",
             "cost_year",
         ]
         lrc_dict = {k: v for k, v in params.items() if k not in h2i_params}
@@ -110,14 +116,14 @@ class HydrogenStorageBaseCostModel(CostModelBaseClass):
         self.add_input(
             "max_charge_rate",
             val=self.config.max_charge_rate,
-            units=f"{self.config.commodity_units}",
+            units=f"{self.config.commodity_rate_units}",
             desc="Hydrogen storage charge rate",
         )
 
         self.add_input(
             "storage_capacity",
             val=self.config.max_capacity,
-            units=f"{self.config.commodity_units}*h",
+            units=f"{self.config.commodity_rate_units}*h",
             desc="Hydrogen storage capacity",
         )
 
@@ -125,7 +131,7 @@ class HydrogenStorageBaseCostModel(CostModelBaseClass):
             "hydrogen_in",
             val=0.0,
             shape=n_timesteps,
-            units=f"{self.config.commodity_units}",
+            units=f"{self.config.commodity_rate_units}",
             desc="Hydrogen input timeseries for average flow rate calculation",
         )
 
@@ -136,7 +142,7 @@ class HydrogenStorageBaseCostModel(CostModelBaseClass):
 
         # convert capacity to kg
         max_capacity_kg = units.convert_units(
-            inputs["storage_capacity"], f"({self.config.commodity_units})*h", "kg"
+            inputs["storage_capacity"], f"({self.config.commodity_rate_units})*h", "kg"
         )
 
         storage_input["h2_storage_kg"] = max_capacity_kg[0]
@@ -146,7 +152,7 @@ class HydrogenStorageBaseCostModel(CostModelBaseClass):
         # not the maximum fill rate.
         avg_hydrogen_in = np.mean(inputs["hydrogen_in"])
         system_flow_rate = units.convert_units(
-            avg_hydrogen_in, f"{self.config.commodity_units}", "kg/d"
+            avg_hydrogen_in, f"{self.config.commodity_rate_units}", "kg/d"
         )
         storage_input["system_flow_rate"] = system_flow_rate  # kg/day
 
@@ -609,11 +615,11 @@ class CompressedGasStorageCostModel(HydrogenStorageBaseCostModel):
         # Relevant design parameters (mostly rows 32-74 of "Compressed Gas H2 Terminal" in [1])
 
         h2_in_kg_d = units.convert_units(
-            inputs["hydrogen_in"], f"({self.config.commodity_units})", "kg/d"
+            inputs["hydrogen_in"], f"({self.config.commodity_rate_units})", "kg/d"
         )
         terminal_capacity_kg_d = np.max(h2_in_kg_d)
         storage_capacity_kg = units.convert_units(
-            inputs["storage_capacity"][0], f"({self.config.commodity_units})*h", "kg"
+            inputs["storage_capacity"][0], f"({self.config.commodity_rate_units})*h", "kg"
         )
         n_compressors = np.ceil(terminal_capacity_kg_d / 24 / 50)  # Cell B59
         # Not sure where the 50 comes from in HDSAM - using rule of thumb of 1 unit per 50 kg/hr?
@@ -644,8 +650,8 @@ class CompressedGasStorageCostModel(HydrogenStorageBaseCostModel):
 
         # Compressed Gas H2 Storage
         # Currently using a linear fit between 350 and 700 bar (the two discrete HDSAM levels)
-        capex_per_kg_350_bar_2013 = 1200  # "Cost Data" row 89
-        capex_per_kg_700_bar_2013 = 1800  # "Cost Data" row 96
+        capex_per_kg_350_bar_2013 = self.config.cg_capex_per_kg_350_bar  # "Cost Data" row 89
+        capex_per_kg_700_bar_2013 = self.config.cg_capex_per_kg_700_bar  # "Cost Data" row 96
         tank_capex_per_kg_2013 = (
             capex_per_kg_350_bar_2013
             + (capex_per_kg_700_bar_2013 - capex_per_kg_350_bar_2013)
@@ -721,11 +727,11 @@ class CompressedGasStorageCostModel(HydrogenStorageBaseCostModel):
         labor_om = annual_hours * labor_rate * overhead
 
         # Other O&M
-        insurance_pct = 0.01  # "Compressed Gas H2 Terminal" tab, cell B229
-        property_taxes_pct = 0.01  # "Compressed Gas H2 Terminal" tab, cell B229
-        licensing_permits_pct = 0.001
-        comp_om_pct = 0.04
-        facility_om_pct = 0.01
+        insurance_pct = self.config.insurance
+        property_taxes_pct = self.config.property_taxes
+        licensing_permits_pct = self.config.licensing_permits
+        comp_om_pct = self.config.compressor_om
+        facility_om_pct = self.config.facility_om
         insurance_om = insurance_pct * installed_capex
         property_taxes_om = property_taxes_pct * installed_capex
         licensing_permits_om = licensing_permits_pct * installed_capex
