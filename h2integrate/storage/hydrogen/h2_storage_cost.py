@@ -650,17 +650,17 @@ class CompressedGasStorageCostModel(HydrogenStorageBaseCostModel):
 
         # Compressed Gas H2 Storage
         # Currently using a linear fit between 350 and 700 bar (the two discrete HDSAM levels)
-        capex_per_kg_350_bar_2013 = self.config.cg_capex_per_kg_350_bar  # "Cost Data" row 89
-        capex_per_kg_700_bar_2013 = self.config.cg_capex_per_kg_700_bar  # "Cost Data" row 96
-        tank_capex_per_kg_2013 = (
-            capex_per_kg_350_bar_2013
-            + (capex_per_kg_700_bar_2013 - capex_per_kg_350_bar_2013)
+        # Fit is coming from config values which are already in 2018 dollars
+        capex_per_kg_350_bar = self.config.cg_capex_per_kg_350_bar  # "Cost Data" row 89
+        capex_per_kg_700_bar = self.config.cg_capex_per_kg_700_bar  # "Cost Data" row 96
+        tank_capex_per_kg = (
+            capex_per_kg_350_bar
+            + (capex_per_kg_700_bar - capex_per_kg_350_bar)
             * (self.config.storage_pressure_bar - 350)
             / 350
         )
         tank_installation_factor = 1.3
-        capex_2013 = tank_capex_per_kg_2013 * storage_capacity_kg * tank_installation_factor
-        tank_capex = capex_2013 * 1.36013289036545 / 1.22431893687708
+        tank_capex = tank_capex_per_kg * storage_capacity_kg * tank_installation_factor
 
         # Piping - simplifying a bit from HDSAM since this is a "drop in the bucket"
         kg_d_per_pipe_m = 300  # Estimated by dividing B34 by B104 for many different values
