@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # to avoid circular imports
 
 
 @define(kw_only=True)
-class PyomoControllerBaseConfig(BaseConfig):
+class PyomoStorageControllerBaseConfig(BaseConfig):
     """
     Configuration data container for Pyomo-based storage / dispatch controllers.
 
@@ -74,16 +74,12 @@ class PyomoControllerBaseConfig(BaseConfig):
             ] * self.n_control_window
 
 
-def dummy_function():
-    """Dummy function used for setting OpenMDAO input/output defaults but otherwise unused.
+class PyomoStorageControllerBaseClass(om.ExplicitComponent):
+    _time_step_bounds = (
+        3600,
+        3600,
+    )  # (min, max) time step lengths (in seconds) compatible with this model
 
-    Returns:
-        None: empty output
-    """
-    return None
-
-
-class PyomoControllerBaseClass(om.ExplicitComponent):
     def initialize(self):
         """
         Declare options for the component. See "Attributes" section in class doc strings for
@@ -125,7 +121,7 @@ class PyomoControllerBaseClass(om.ExplicitComponent):
         # create output for the pyomo control model
         self.add_discrete_output(
             "pyomo_dispatch_solver",
-            val=dummy_function,
+            val=lambda: None,
             desc="callable: fully formed pyomo model and execution logic to be run \
                 by owning technologies performance model",
         )

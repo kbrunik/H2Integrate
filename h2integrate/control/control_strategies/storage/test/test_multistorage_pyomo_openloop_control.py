@@ -5,11 +5,11 @@ from pytest import fixture
 
 from h2integrate.storage.battery.pysam_battery import PySAMBatteryPerformanceModel
 from h2integrate.storage.storage_performance_model import StoragePerformanceModel
-from h2integrate.control.control_strategies.heuristic_pyomo_controller import (
-    HeuristicLoadFollowingController,
-)
 from h2integrate.control.control_rules.storage.pyomo_storage_rule_baseclass import (
     PyomoRuleStorageBaseclass,
+)
+from h2integrate.control.control_strategies.storage.heuristic_pyomo_controller import (
+    HeuristicLoadFollowingStorageController,
 )
 from h2integrate.control.control_strategies.storage.demand_openloop_storage_controller import (
     DemandOpenLoopStorageController,
@@ -68,7 +68,7 @@ def make_battery_pyo_group(plant_config_bat):
     bat_tech_config = {
         "battery": {
             "dispatch_rule_set": {"model": "PyomoRuleStorageBaseclass"},
-            "control_strategy": {"model": "HeuristicLoadFollowingController"},
+            "control_strategy": {"model": "HeuristicLoadFollowingStorageController"},
             "performance_model": {"model": "PySAMBatteryPerformanceModel"},
             "model_inputs": {
                 "shared_parameters": {
@@ -104,7 +104,7 @@ def make_battery_pyo_group(plant_config_bat):
     perf_comp = PySAMBatteryPerformanceModel(
         plant_config=plant_config_bat, tech_config=bat_tech_config["battery"]
     )
-    control_comp = HeuristicLoadFollowingController(
+    control_comp = HeuristicLoadFollowingStorageController(
         plant_config=plant_config_bat, tech_config=bat_tech_config["battery"]
     )
 
@@ -119,7 +119,7 @@ def make_h2_storage_pyo_group(plant_config_h2s):
     h2s_tech_config = {
         "h2_storage": {
             "dispatch_rule_set": {"model": "PyomoRuleStorageBaseclass"},
-            "control_strategy": {"model": "HeuristicLoadFollowingController"},
+            "control_strategy": {"model": "HeuristicLoadFollowingStorageController"},
             "performance_model": {"model": "StoragePerformanceModel"},
             "model_inputs": {
                 "shared_parameters": {
@@ -152,7 +152,7 @@ def make_h2_storage_pyo_group(plant_config_h2s):
     perf_comp = StoragePerformanceModel(
         plant_config=plant_config_h2s, tech_config=h2s_tech_config["h2_storage"]
     )
-    control_comp = HeuristicLoadFollowingController(
+    control_comp = HeuristicLoadFollowingStorageController(
         plant_config=plant_config_h2s, tech_config=h2s_tech_config["h2_storage"]
     )
 
@@ -305,13 +305,13 @@ def test_battery_openloop(subtests, plant_config):
 
     with subtests.test("Battery: Expected charge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_charge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_charge", units="kW")[:24],
             bat_expected_charge,
             rtol=1e-6,
         )
     with subtests.test("Battery: Expected discharge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_discharge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_discharge", units="kW")[:24],
             bat_expected_discharge,
             rtol=1e-6,
         )
@@ -381,13 +381,13 @@ def test_battery_pyo(subtests, plant_config):
 
     with subtests.test("Battery: Expected charge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_charge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_charge", units="kW")[:24],
             bat_expected_charge,
             rtol=1e-6,
         )
     with subtests.test("Battery: Expected discharge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_discharge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_discharge", units="kW")[:24],
             bat_expected_discharge,
             rtol=1e-6,
         )
@@ -508,13 +508,13 @@ def test_both_pyomo_controllers(subtests, plant_config):
 
     with subtests.test("Battery: Expected charge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_charge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_charge", units="kW")[:24],
             bat_expected_charge,
             rtol=1e-6,
         )
     with subtests.test("Battery: Expected discharge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_discharge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_discharge", units="kW")[:24],
             bat_expected_discharge,
             rtol=1e-6,
         )
@@ -586,13 +586,13 @@ def test_both_openloop_controllers(subtests, plant_config):
 
     with subtests.test("Battery: Expected charge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_charge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_charge", units="kW")[:24],
             bat_expected_charge,
             rtol=1e-6,
         )
     with subtests.test("Battery: Expected discharge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_discharge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_discharge", units="kW")[:24],
             bat_expected_discharge,
             rtol=1e-6,
         )
@@ -668,13 +668,13 @@ def test_h2s_pyomo_battery_openloop(subtests, plant_config):
 
     with subtests.test("Battery: Expected charge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_charge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_charge", units="kW")[:24],
             bat_expected_charge,
             rtol=1e-6,
         )
     with subtests.test("Battery: Expected discharge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_discharge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_discharge", units="kW")[:24],
             bat_expected_discharge,
             rtol=1e-6,
         )
@@ -765,13 +765,13 @@ def test_battery_pyomo_h2s_openloop(subtests, plant_config):
 
     with subtests.test("Battery: Expected charge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_charge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_charge", units="kW")[:24],
             bat_expected_charge,
             rtol=1e-6,
         )
     with subtests.test("Battery: Expected discharge"):
         np.testing.assert_allclose(
-            prob.get_val("battery.battery_electricity_discharge", units="kW")[:24],
+            prob.get_val("battery.storage_electricity_discharge", units="kW")[:24],
             bat_expected_discharge,
             rtol=1e-6,
         )

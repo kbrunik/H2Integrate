@@ -6,8 +6,10 @@ from h2integrate.transporters.cable import CablePerformanceModel
 from h2integrate.converters.grid.grid import GridCostModel, GridPerformanceModel
 from h2integrate.finances.profast_lco import ProFastLCO
 from h2integrate.finances.profast_npv import ProFastNPV
+from h2integrate.demand.generic_demand import GenericDemandComponent
 from h2integrate.converters.steel.steel import SteelPerformanceModel, SteelCostAndFinancialModel
 from h2integrate.converters.wind.floris import FlorisWindPlantPerformanceModel
+from h2integrate.demand.flexible_demand import FlexibleDemandComponent
 from h2integrate.converters.wind.wind_pysam import PYSAMWindPlantPerformanceModel
 from h2integrate.transporters.generic_summer import GenericSummerPerformanceModel
 from h2integrate.converters.hopp.hopp_wrapper import HOPPComponent
@@ -138,12 +140,6 @@ from h2integrate.converters.co2.marine.ocean_alkalinity_enhancement import (
 from h2integrate.converters.hydrogen.custom_electrolyzer_cost_model import (
     CustomElectrolyzerCostModel,
 )
-from h2integrate.control.control_strategies.heuristic_pyomo_controller import (
-    HeuristicLoadFollowingController,
-)
-from h2integrate.control.control_strategies.optimized_pyomo_controller import (
-    OptimizedDispatchController,
-)
 from h2integrate.converters.hydrogen.geologic.aspen_surface_processing import (
     AspenGeoH2SurfaceCostModel,
     AspenGeoH2SurfacePerformanceModel,
@@ -158,6 +154,12 @@ from h2integrate.resource.solar.nlr_developer_meteosat_prime_meridian_models imp
     MeteosatPrimeMeridianSolarAPI,
     MeteosatPrimeMeridianTMYSolarAPI,
 )
+from h2integrate.control.control_strategies.storage.heuristic_pyomo_controller import (
+    HeuristicLoadFollowingStorageController,
+)
+from h2integrate.control.control_strategies.storage.optimized_pyomo_controller import (
+    OptimizedDispatchStorageController,
+)
 from h2integrate.control.control_strategies.storage.simple_openloop_controller import (
     SimpleStorageOpenLoopController,
 )
@@ -169,12 +171,6 @@ from h2integrate.control.control_rules.converters.generic_converter_min_operatin
 )
 from h2integrate.control.control_strategies.storage.demand_openloop_storage_controller import (
     DemandOpenLoopStorageController,
-)
-from h2integrate.control.control_strategies.converters.flexible_demand_openloop_controller import (
-    FlexibleDemandOpenLoopConverterController,
-)
-from h2integrate.control.control_strategies.converters.demand_openloop_converter_controller import (
-    DemandOpenLoopConverterController,
 )
 
 
@@ -282,10 +278,10 @@ supported_models = {
     # Control
     "SimpleStorageOpenLoopController": SimpleStorageOpenLoopController,
     "DemandOpenLoopStorageController": DemandOpenLoopStorageController,
-    "HeuristicLoadFollowingController": HeuristicLoadFollowingController,
-    "OptimizedDispatchController": OptimizedDispatchController,
-    "DemandOpenLoopConverterController": DemandOpenLoopConverterController,
-    "FlexibleDemandOpenLoopConverterController": FlexibleDemandOpenLoopConverterController,
+    "HeuristicLoadFollowingStorageController": HeuristicLoadFollowingStorageController,
+    "OptimizedDispatchStorageController": OptimizedDispatchStorageController,
+    "GenericDemandComponent": GenericDemandComponent,
+    "FlexibleDemandComponent": FlexibleDemandComponent,
     # Dispatch
     "PyomoDispatchGenericConverter": PyomoDispatchGenericConverter,
     "PyomoRuleStorageBaseclass": PyomoRuleStorageBaseclass,
@@ -307,4 +303,26 @@ supported_models = {
     "SimpleGasConsumerPerformance": SimpleGasConsumerPerformance,
     "SimpleGasConsumerCost": SimpleGasConsumerCost,
     "GasStreamCombinerPerformanceModel": GasStreamCombinerPerformanceModel,
+}
+
+
+# This next section is to demarcate specific models that belong to certain categories that are
+# relevant for processing in the model stackup. Right now, these designations are
+# used in `h2integrate_model.py`.
+
+
+# Model classes that do not contribute costs to the finance stackup because they are essentially
+# internal-only models that aren't categorized as a specific technology (e.g. a generic combiner
+# or splitter, or a model that is only used for performance modeling within another model and
+# doesn't have an independent cost model).
+no_cost_models = {
+    "GenericSplitterPerformanceModel",
+    "GenericCombinerPerformanceModel",
+    "GasStreamCombinerPerformanceModel",
+    "CablePerformanceModel",
+    "PipePerformanceModel",
+}
+
+no_replacement_schedule_models = {
+    "IronTransportPerformanceComponent",
 }

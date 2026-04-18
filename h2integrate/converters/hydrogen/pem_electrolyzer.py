@@ -59,6 +59,11 @@ class ECOElectrolyzerPerformanceModel(ElectrolyzerPerformanceBaseClass):
     Takes electricity input and outputs hydrogen and oxygen generation rates.
     """
 
+    _time_step_bounds = (
+        3600,
+        3600,
+    )  # (min, max) time step lengths (in seconds) compatible with this model
+
     def setup(self):
         self.config = ECOElectrolyzerPerformanceModelConfig.from_dict(
             merge_shared_inputs(self.options["tech_config"]["model_inputs"], "performance"),
@@ -90,6 +95,11 @@ class ECOElectrolyzerPerformanceModel(ElectrolyzerPerformanceBaseClass):
             units="MW",
             desc="Size of the electrolyzer in MW",
         )
+
+        self.add_output("oxygen_out", val=0, shape=self.n_timesteps, units="kg/h")
+        self.add_output("rated_oxygen_production", val=0, shape=1, units="kg/h")
+        self.add_output("annual_oxygen_produced", val=0, shape=self.plant_life, units="kg/yr")
+
         self.add_input("cluster_size", val=-1.0, units="MW")
         self.add_input("max_hydrogen_capacity", val=1000.0, units="kg/h")
         # TODO: add feedstock inputs and consumption outputs
@@ -163,9 +173,10 @@ class ECOElectrolyzerPerformanceModel(ElectrolyzerPerformanceBaseClass):
         outputs["efficiency"] = H2_Results["Sim: Average Efficiency [%-HHV]"]
         refurb_schedule = np.zeros(self.plant_life)
         if np.isnan(H2_Results["Time Until Replacement [hrs]"]):
-            refurb_period = 80000 / (24 * 365)
+            refurb_period = round(80000 / (24 * 365))
         else:
             refurb_period = round(float(H2_Results["Time Until Replacement [hrs]"]) / (24 * 365))
+
         refurb_schedule[refurb_period : self.plant_life : refurb_period] = 1
 
         # The replacement_schedule is the fraction of the total capacity that is replaced per year
@@ -188,8 +199,13 @@ class ECOElectrolyzerPerformanceModel(ElectrolyzerPerformanceBaseClass):
             "Capacity Factor [-]"
         ].values
         outputs["annual_hydrogen_produced"] = H2_Results["Life: Annual H2 production [kg/year]"]
-
         # TODO: replace above line w below
         # outputs["annual_hydrogen_produced"] = H2_Results["Performance Schedules"][
         #     "Annual H2 Production [kg/year]"
         # ].values
+
+        outputs["oxygen_out"] = H2_Results["Oxygen Hourly Production [kg/hr]"]
+        outputs["rated_oxygen_production"] = H2_Results["Rated BOL: O2 Production [kg/hr]"]
+        outputs["annual_oxygen_produced"] = H2_Results["Performance Schedules"][
+            "Annual O2 Production [kg/year]"
+        ]
