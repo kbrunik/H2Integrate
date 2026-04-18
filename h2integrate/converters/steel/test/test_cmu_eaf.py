@@ -175,3 +175,46 @@ def test_energy_mass_balance_per_unit(
             pytest.approx(sum(prob.get_val("lime_consumed", units="t/h")), rel=1e-6)
             == 0.008334703613977486
         )
+
+
+@pytest.mark.unit
+def test_scrap_EAF_performance(steel_config, plant_config, feedstock_availability_costs, subtests):
+    prob = om.Problem()
+
+    perf = CMUElectricArcFurnaceScrapOnlyPerformanceComponent(
+        plant_config=plant_config, tech_config=steel_config, driver_config={}
+    )
+
+    prob.model.add_subsystem("perf", perf, promotes=["*"])
+    prob.setup()
+
+    for feedstock_name, feedstock_info in feedstock_availability_costs.items():
+        prob.set_val(
+            f"perf.{feedstock_name}_in",
+            feedstock_info["rated_capacity"],
+            units=feedstock_info["units"],
+        )
+    prob.run_model()
+
+    with subtests.test("steel_out"):
+        assert pytest.approx(sum(prob.get_val("steel_out")), rel=1e-6) == 0.9999999999999999
+
+    with subtests.test("rated_steel_production"):
+        assert (
+            pytest.approx(prob.get_val("rated_steel_production", units="t/h"), rel=1e-6)
+            == 0.000114155214
+        )
+
+    with subtests.test("total_steel_produced"):
+        assert (
+            pytest.approx(prob.get_val("total_steel_produced", units="t"), rel=1e-6) == 0.99999999
+        )
+
+    with subtests.test("annual_steel_produced"):
+        assert (
+            pytest.approx(prob.get_val("annual_steel_produced", units="t/yr"), rel=1e-6)
+            == 0.9999999
+        )
+
+    with subtests.test("capacity_factor"):
+        assert pytest.approx(prob.get_val("capacity_factor"), rel=1e-6) == 1.0

@@ -1,5 +1,3 @@
-"""Electric Arc Furnace performance model based on CMU decarbSTEEL EAF Model v5"""
-
 import numpy as np
 from attrs import field, define
 from openmdao.utils import units
@@ -18,9 +16,6 @@ from h2integrate.tools.constants import (
     LHV_CH4_MJ_PER_KG,
 )
 from h2integrate.core.model_baseclasses import PerformanceModelBaseClass
-
-
-# NOTE: values are in metric system, all tons = metric tons
 
 
 @define
@@ -64,9 +59,6 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceConfig(BaseConfig):
             "SiO2": 1.0 / 100,  # mass fraction SiO2, 'Model Inputs & Outputs!B28'
         }
     )
-    electrodes_usage_rate: float = field(
-        default=2.00
-    )  # kg/ton steel, '5. Electric Arc Furnace!C33'
     energy_mass_balance_dict: dict = field(
         default={
             # MMBtu/ton steel, '5. Electric Arc Furnace!C32'
@@ -100,6 +92,8 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceConfig(BaseConfig):
 
 
 class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseClass):
+    """Electric Arc Furnace performance model based on CMU decarbSTEEL EAF Model v5"""
+
     def initialize(self):
         super().initialize()
         self.commodity = "steel"
@@ -213,6 +207,10 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         )
 
     def compute(self, inputs, outputs):
+        """calculates energy and mass balance for EAF fed with scrap only case on a per unit basis,
+        then calculates feedstock usage based on steel demand and available feedstocks,
+        and finally calculates outputs.
+        """
         # calculate energy mass balance on a per ton liquid steel basis
         energy_mass_per_tonne = self.energy_mass_balance_per_unit()
 
@@ -297,7 +295,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
     def energy_mass_balance_per_unit(self):
         """Computes the energy and mass balance for the EAF fed with scrap only case on a
-            per unit of scrap basis (per tscrap).
+            per ton of scrap basis (tscrap) and per ton of liquid steel basis (tLS).
         Returns:
             output_dict (dict): Dictionary with the amount of feedstocks and energy used per
                 ton of steel.
