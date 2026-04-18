@@ -86,7 +86,7 @@ class CMUElectricArcFurnaceDRIPerformanceConfig(BaseConfig):
             # (kWh/tHM) EAF scrap absolute heat loss adjustment,
             # '12. EAF Mass & Energy Balance!G148'
             # default value based on CMUElectricArcFurnaceScrapOnlyPerformanceComponent model
-            "EAF_scrap_heat_loss_adjustment_abs": -3887234555.414091,
+            "EAF_scrap_heat_loss_adjustment_abs": 170.05902581681391,
         }
     )
 

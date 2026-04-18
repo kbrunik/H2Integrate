@@ -691,7 +691,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
         # (kWh/tHM) EAF scrap energy consumption, '12. EAF Mass & Energy Balance!G146'
         EAF_scrap_energy_consumption_kWh_tHM = units.convert_units(
-            EAF_scrap_energy_consumption_kJ_tHM, "kW*h", "kJ"
+            EAF_scrap_energy_consumption_kJ_tHM, "kJ", "kW*h"
         )
 
         # NOTE: 470.00 is a hardcoded value / assumption input on '5. Electric Arc Furnace'!C6
