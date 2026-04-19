@@ -124,7 +124,7 @@ def feedstock_availability_costs():
 
 
 @pytest.mark.unit
-def test_energy_mass_balance_per_unit(
+def test_energy_mass_balance_per_unit_BF(
     steel_config, plant_config, feedstock_availability_costs, subtests
 ):
     prob = om.Problem()
@@ -187,7 +187,7 @@ def test_energy_mass_balance_per_unit(
 
 
 @pytest.mark.unit
-def test_scrap_EAF_performance(steel_config, plant_config, feedstock_availability_costs, subtests):
+def test_dri_EAF_performance_BF(steel_config, plant_config, feedstock_availability_costs, subtests):
     prob = om.Problem()
 
     perf = CMUElectricArcFurnaceDRIPerformanceComponent(
@@ -227,3 +227,138 @@ def test_scrap_EAF_performance(steel_config, plant_config, feedstock_availabilit
 
     with subtests.test("capacity_factor"):
         assert pytest.approx(prob.get_val("capacity_factor"), rel=1e-6) == 1.0
+
+
+@pytest.mark.unit
+def test_energy_mass_balance_per_unit_DR(
+    steel_config, plant_config, feedstock_availability_costs, subtests
+):
+    prob = om.Problem()
+
+    steel_config["model_inputs"]["performance_parameters"]["pellet_grade"] = "DR"
+
+    perf = CMUElectricArcFurnaceDRIPerformanceComponent(
+        plant_config=plant_config, tech_config=steel_config, driver_config={}
+    )
+
+    prob.model.add_subsystem("perf", perf, promotes=["*"])
+    prob.setup()
+
+    for feedstock_name, feedstock_info in feedstock_availability_costs.items():
+        prob.set_val(
+            f"perf.{feedstock_name}_in",
+            feedstock_info["rated_capacity"],
+            units=feedstock_info["units"],
+        )
+    prob.run_model()
+
+    with subtests.test("kg_slag"):
+        assert pytest.approx(sum(prob.get_val("slag_out")), rel=1e-6) == 220.5533236403591
+
+    with subtests.test("kg_MgO_in_slag"):
+        assert pytest.approx(sum(prob.get_val("mass_MgO_slag")), rel=1e-6) == 26.46639883684309
+
+    with subtests.test("kg_FeO_in_slag"):
+        assert pytest.approx(sum(prob.get_val("mass_FeO_slag")), rel=1e-6) == 66.16599709210773
+
+    with subtests.test("mass_steel_per_unit_dri"):
+        assert (
+            pytest.approx(prob.get_val("mass_steel_per_unit_dri"), rel=1e-6) == 1450.5406462547523
+        )
+
+    with subtests.test("oxygen_consumed"):
+        assert pytest.approx(sum(prob.get_val("oxygen_consumed")), rel=1e-6) == 42.96310548175213
+
+    with subtests.test("electricity_consumed"):
+        assert (
+            pytest.approx(sum(prob.get_val("electricity_consumed")), rel=1e-6) == 516.3668575688282
+        )
+
+    with subtests.test("natural_gas_consumed"):
+        assert pytest.approx(sum(prob.get_val("natural_gas_consumed")), rel=1e-6) == 0.44
+
+    with subtests.test("electrodes_consumed"):
+        assert pytest.approx(sum(prob.get_val("electrodes_consumed")), rel=1e-6) == 2.0
+
+    with subtests.test("scrap_consumed"):
+        assert pytest.approx(sum(prob.get_val("scrap_consumed")), rel=1e-6) == 0.4595987491891233
+
+    with subtests.test("coal_consumed"):
+        assert pytest.approx(sum(prob.get_val("coal_consumed")), rel=1e-6) == 0.020114190476831644
+
+    with subtests.test("doloma_consumed"):
+        assert pytest.approx(sum(prob.get_val("doloma_consumed")), rel=1e-6) == 0.06351935720842342
+
+    with subtests.test("lime_consumed"):
+        assert (
+            pytest.approx(sum(prob.get_val("lime_consumed", units="t/h")), rel=1e-6)
+            == 0.03969959825526465
+        )
+
+
+@pytest.mark.unit
+def test_energy_mass_balance_per_unit_DR_cold(
+    steel_config, plant_config, feedstock_availability_costs, subtests
+):
+    prob = om.Problem()
+
+    steel_config["model_inputs"]["performance_parameters"]["pellet_grade"] = "DR"
+    steel_config["model_inputs"]["performance_parameters"]["DRI_feed_temp"] = "cold"
+
+    perf = CMUElectricArcFurnaceDRIPerformanceComponent(
+        plant_config=plant_config, tech_config=steel_config, driver_config={}
+    )
+
+    prob.model.add_subsystem("perf", perf, promotes=["*"])
+    prob.setup()
+
+    for feedstock_name, feedstock_info in feedstock_availability_costs.items():
+        prob.set_val(
+            f"perf.{feedstock_name}_in",
+            feedstock_info["rated_capacity"],
+            units=feedstock_info["units"],
+        )
+    prob.run_model()
+
+    with subtests.test("kg_slag"):
+        assert pytest.approx(sum(prob.get_val("slag_out")), rel=1e-6) == 220.5533236403591
+
+    with subtests.test("kg_MgO_in_slag"):
+        assert pytest.approx(sum(prob.get_val("mass_MgO_slag")), rel=1e-6) == 26.46639883684309
+
+    with subtests.test("kg_FeO_in_slag"):
+        assert pytest.approx(sum(prob.get_val("mass_FeO_slag")), rel=1e-6) == 66.16599709210773
+
+    with subtests.test("mass_steel_per_unit_dri"):
+        assert (
+            pytest.approx(prob.get_val("mass_steel_per_unit_dri"), rel=1e-6) == 1450.5406462547523
+        )
+
+    with subtests.test("oxygen_consumed"):
+        assert pytest.approx(sum(prob.get_val("oxygen_consumed")), rel=1e-6) == 42.96310548175213
+
+    with subtests.test("electricity_consumed"):
+        assert (
+            pytest.approx(sum(prob.get_val("electricity_consumed")), rel=1e-6) == 569.7056767932859
+        )
+
+    with subtests.test("natural_gas_consumed"):
+        assert pytest.approx(sum(prob.get_val("natural_gas_consumed")), rel=1e-6) == 0.44
+
+    with subtests.test("electrodes_consumed"):
+        assert pytest.approx(sum(prob.get_val("electrodes_consumed")), rel=1e-6) == 2.0
+
+    with subtests.test("scrap_consumed"):
+        assert pytest.approx(sum(prob.get_val("scrap_consumed")), rel=1e-6) == 0.4595987491891233
+
+    with subtests.test("coal_consumed"):
+        assert pytest.approx(sum(prob.get_val("coal_consumed")), rel=1e-6) == 0.020114190476831644
+
+    with subtests.test("doloma_consumed"):
+        assert pytest.approx(sum(prob.get_val("doloma_consumed")), rel=1e-6) == 0.06351935720842342
+
+    with subtests.test("lime_consumed"):
+        assert (
+            pytest.approx(sum(prob.get_val("lime_consumed", units="t/h")), rel=1e-6)
+            == 0.03969959825526465
+        )
