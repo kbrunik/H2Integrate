@@ -123,6 +123,10 @@ class CMUElectricArcFurnaceDRIPerformanceConfig(BaseConfig):
                 if key not in self.DRI_composition:
                     raise KeyError(f"Missing key '{key}' in DRI_composition.")
 
+            total_dri_composition = sum(self.DRI_composition.values())
+            if total_dri_composition > 1.0:
+                raise ValueError("The sum of the DRI_composition values cannot exceed 1.0.")
+
             if self.SiO2_ratio is None:
                 raise ValueError("SiO2_ratio must be provided when pellet_grade='custom'.")
 
@@ -169,6 +173,35 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
             val=self.config.pct_DRI,
             units="percent",
             desc="percentage of DRI vs scrap input into EAF",
+        )
+
+        # dri composition
+        self.add_input(
+            "DRI_composition_Fe",
+            val=self.config.DRI_composition["Fe"],
+            units="unitless",
+            desc="Mass fraction of Fe in DRI feedstock",
+        )
+
+        self.add_input(
+            "DRI_composition_FeO",
+            val=self.config.DRI_composition["FeO"],
+            units="unitless",
+            desc="Mass fraction of FeO in DRI feedstock",
+        )
+
+        self.add_input(
+            "DRI_composition_gangue",
+            val=self.config.DRI_composition["gangue"],
+            units="unitless",
+            desc="Mass fraction of gangue in DRI feedstock",
+        )
+
+        self.add_input(
+            "DRI_composition_C",
+            val=self.config.DRI_composition["C"],
+            units="unitless",
+            desc="Mass fraction of C in DRI feedstock",
         )
 
         feedstocks_to_units = {
@@ -396,7 +429,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         ) / share_of_DRI_in_charge
 
         # kg gangue/tDRI, '12. EAF Mass & Energy Balance!D161'
-        mass_gangue_per_tDRI = mass_basis_DRI * self.config.DRI_composition["gangue"]
+        mass_gangue_per_tDRI = mass_basis_DRI * inputs["DRI_composition_gangue"]
         # kg/kg SiO2 to Alumina Ratio in DRI, '12. EAF Mass & Energy Balance!D162'
         SiO2_ratio = self.config.SiO2_ratio
 
@@ -439,7 +472,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # kg FeO in slag/tDRI, '12. EAF Mass & Energy Balance!D180'
         output_dict["mass_FeO_slag_per_tDRI"] = pct_FeO_slag * output_dict["mass_slag_per_tDRI"]
         # kg FeO/tDRI, '12. EAF Mass & Energy Balance!D182'
-        mass_FeO_DRI_per_tDRI = mass_basis_DRI * self.config.DRI_composition["FeO"]
+        mass_FeO_DRI_per_tDRI = mass_basis_DRI * inputs["DRI_composition_FeO"]
 
         # kmol FeO/tDRI, 71.80 = '10. DRI Mass & Energy Balance!D22',
         # '12. EAF Mass & Energy Balance!D183'
@@ -458,8 +491,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
 
         # kg Fe from DRI per tDRI, '12. EAF Mass & Energy Balance!D189'
         output_dict["mass_Fe_DRI_per_tDRI"] = (
-            mass_basis_DRI * self.config.DRI_composition["Fe"]
-            - output_dict["mass_Fe_to_FeO_per_tDRI"]
+            mass_basis_DRI * inputs["DRI_composition_Fe"] - output_dict["mass_Fe_to_FeO_per_tDRI"]
         )
         # kg Fe from scrap per tDRI, '12. EAF Mass & Energy Balance!D190'
         output_dict["mass_Fe_scrap_per_tDRI"] = mass_scrap_from_basis * scrap_composition["Fe"]
@@ -481,9 +513,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         mass_scrap_per_tLS = (mass_scrap_from_basis / output_dict["mass_steel_per_tDRI"]) * 1000
         output_dict["mass_scrap_per_tLS"] = units.convert_units(mass_scrap_per_tLS, "kg", "t")
         # kg gangue per tLS from DRI, '12. EAF Mass & Energy Balance!D198'
-        output_dict["mass_gangue_per_tLS"] = (
-            mass_DRI_per_tLS * self.config.DRI_composition["gangue"]
-        )
+        output_dict["mass_gangue_per_tLS"] = mass_DRI_per_tLS * inputs["DRI_composition_gangue"]
         # kg/kg SiO2 to Alumina Ratio in DRI,
         # '12. EAF Mass & Energy Balance!D199' > '12. EAF Mass & Energy Balance!D162'
         SiO2_ratio = SiO2_ratio
@@ -512,7 +542,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         output_dict["mass_FeO_slag_per_tLS"] = pct_FeO_slag * output_dict["mass_slag_per_tLS"]
 
         # kg FeO from DRI per tLS, '12. EAF Mass & Energy Balance!D215'
-        mass_FeO_DRI_per_tLS = mass_DRI_per_tLS * self.config.DRI_composition["FeO"]
+        mass_FeO_DRI_per_tLS = mass_DRI_per_tLS * inputs["DRI_composition_FeO"]
 
         # kmol FeO from DRI per tLS, '12. EAF Mass & Energy Balance!D216'
         mole_FeO_DRI_per_tLS = mass_FeO_DRI_per_tLS / FEO_MW
@@ -531,7 +561,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # kg Carbon in Steel per tLS, '12. EAF Mass & Energy Balance!D223'
         mass_C_steel_per_tLS = mass_steel_stream * pct_carbon_steel
         # kg Carbon in DRI per tLS, '12. EAF Mass & Energy Balance!D224'
-        mass_C_DRI_per_tLS = mass_DRI_per_tLS * self.config.DRI_composition["C"]
+        mass_C_DRI_per_tLS = mass_DRI_per_tLS * inputs["DRI_composition_C"]
         natural_gas_MJ = units.convert_units(output_dict["natural_gas_per_tLS"], "MMBtu", "MJ")
         # kg Carbon in natural gas per tLS, '12. EAF Mass & Energy Balance!D225'
         mass_C_ng_per_tLS = natural_gas_MJ / LHV_CH4_MJ_PER_KG * C_MW / CH4_MW
@@ -655,7 +685,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
             DRI_Al2O3_J_mol = -1.675711853668660e06
 
         # kg Fe BF pellets, '12. EAF Mass & Energy Balance!F264'
-        DRI_Fe_kg = mass_DRI_per_tLS * self.config.DRI_composition["Fe"]
+        DRI_Fe_kg = mass_DRI_per_tLS * inputs["DRI_composition_Fe"]
         # kmol Fe BF pellets, '12. EAF Mass & Energy Balance!E264'
         DRI_Fe_n_kmol = DRI_Fe_kg / FE_MW
         # kJ Fe BF pellets, '12. EAF Mass & Energy Balance!G264'
