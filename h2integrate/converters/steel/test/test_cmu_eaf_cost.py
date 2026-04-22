@@ -58,7 +58,7 @@ def test_cmu_eaf_cost(cost_config, plant_config, subtests):
     prob.run_model()
 
     with subtests.test("capex"):
-        assert pytest.approx(prob.get_val("CapEx", units="USD"), rel=1e-9) == 646385230.65494
+        assert pytest.approx(prob.get_val("CapEx", units="USD"), rel=1e-9) == 762839961.0691428
 
     with subtests.test("opex"):
-        assert pytest.approx(prob.get_val("OpEx", units="USD/year"), rel=1e-9) == 43088135.379472725
+        assert pytest.approx(prob.get_val("OpEx", units="USD/year"), rel=1e-9) == 48328598.24811143

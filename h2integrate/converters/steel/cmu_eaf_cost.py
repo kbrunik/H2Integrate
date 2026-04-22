@@ -10,6 +10,9 @@ class CMUElectricArcFurnaceCostConfig(CostModelBaseConfig):
     """Configuration class for the CMUElectricArcFurnaceCostModel.
 
     Args:
+        capex_usd_per_tonne_capacity (float): Capital expenditure in USD per tonne of steel.
+            Default value is 217.15 based on Vogl et al. (2018) study which is reported as
+            184 Euros/tonne, converted to USD.
         maintenance_cost_rate (float): Fraction of capital expenditure allocated to annual
             maintenance and operations costs.
             Default value is 0.045, which corresponds to 4.5% of CapEx allocated to annual
@@ -28,6 +31,7 @@ class CMUElectricArcFurnaceCostConfig(CostModelBaseConfig):
 
     """
 
+    capex_usd_per_tonne_capacity: float = field(default=217.15)
     # fraction of capex for O&M (x100 = %), 'Model Inputs & Outputs!B3'
     maintenance_cost_rate: float = field(default=0.045)
     # $ mean annual wage steel worker, 'Model Inputs & Outputs!B4'
@@ -90,7 +94,9 @@ class CMUElectricArcFurnaceCostModel(CostModelBaseClass):
 
         # > CAPEX by Technology Lookup Table
         # $/ton steel capacity annually, EAF (mid) '6. Production Cost!C114'
-        reported_levelized_capex = 184 * USD_financial_conversion_2018
+        reported_levelized_capex = (
+            self.config.capex_usd_per_tonne_capacity * USD_financial_conversion_2018
+        )
         # $/ton steel capacity annually, EAF (mid) '6. Production Cost!G114' (capex_tpa)
         inflation_adjusted_levelized_capex = (
             reported_levelized_capex * CEPCI_index_2022 / CEPCI_index_2018
