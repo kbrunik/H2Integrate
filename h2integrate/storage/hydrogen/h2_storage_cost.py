@@ -13,24 +13,23 @@ class HydrogenStorageBaseCostModelConfig(BaseConfig):
     """Base config class for HydrogenStorageBaseCostModel.
 
     Attributes:
-    - max_capacity (float): Maximum storage capacity (kg)
-    - max_charge_rate (float): Maximum charging rate (kg/h)
-    - sizing_mode (str): Mode for sizing storage (auto or set)
-    - commodity_name (str): Name of the commodity
-    - commodity_rate_units (str): Units of the commodity
-    - cost_year (int): Year for cost calculations
-    - labor_rate (float): Labor rate for cost calculations
-    - insurance (float): Insurance cost as a fraction of total cost
-    - property_taxes (float): Property taxes as a fraction of total cost
-    - licensing_permits (float): Licensing and permits cost as a fraction of total cost
-    - compressor_om (float): Compressor operation and maintenance cost as a fraction of total cost
-    - facility_om (float): Facility operation and maintenance cost as a fraction of total cost
-    - inlet_pressure_bar (float): Inlet pressure for compressed gas storage (bar)
-    - storage_pressure_bar (float): Storage pressure for compressed gas storage (bar) - max 700
-    - cg_capex_per_kg_350_bar (float): Capital cost per kg for compressed gas storage at 350 bar
-        Default is $1200 (2013 dollars) from HDSAM, converted to 2018 dollars using CEPCI.
-    - cg_capex_per_kg_700_bar (float): Capital cost per kg for compressed gas storage at 700 bar
-        Default is $1800 (2013 dollars) from HDSAM, converted to 2018 dollars using CEPCI.
+        max_capacity (float): Maximum storage capacity (kg)
+        max_charge_rate (float): Maximum charging rate (kg/h)
+        sizing_mode (str): Mode for sizing storage (auto or set)
+        commodity_rate_units (str): Units of the commodity
+        cost_year (int): Year for cost calculations
+        labor_rate (float): Labor rate for cost calculations
+        insurance (float): Insurance cost as a fraction of total cost
+        property_taxes (float): Property taxes as a fraction of total cost
+        licensing_permits (float): Licensing and permits cost as a fraction of total cost
+        compressor_om (float): Compressor operation and maintenance cost as a fraction of total cost
+        facility_om (float): Facility operation and maintenance cost as a fraction of total cost
+        inlet_pressure_bar (float): Inlet pressure for compressed gas storage (bar)
+        storage_pressure_bar (float): Storage pressure for compressed gas storage (bar) - max 700
+        cg_capex_per_kg_350_bar (float): Capital cost per kg for compressed gas storage at 350 bar
+            Default is $1200 (2013 dollars) from HDSAM, converted to 2018 dollars using CEPCI.
+        cg_capex_per_kg_700_bar (float): Capital cost per kg for compressed gas storage at 700 bar
+            Default is $1800 (2013 dollars) from HDSAM, converted to 2018 dollars using CEPCI.
     """
 
     max_capacity: float | None = field(default=None)
@@ -39,7 +38,6 @@ class HydrogenStorageBaseCostModelConfig(BaseConfig):
         default="set", converter=(str.strip, str.lower), validator=contains(["auto", "set"])
     )
 
-    commodity_name: str = field(default="hydrogen")
     commodity_rate_units: str = field(default="kg/h", validator=contains(["kg/h", "g/h", "t/h"]))
 
     cost_year: int = field(default=2018, converter=int, validator=contains([2018]))
@@ -85,7 +83,6 @@ class HydrogenStorageBaseCostModelConfig(BaseConfig):
         h2i_params = [
             "max_capacity",
             "max_charge_rate",
-            "commodity_name",
             "commodity_rate_units",
             "cost_year",
         ]
