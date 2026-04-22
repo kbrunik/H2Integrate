@@ -10,6 +10,9 @@ class CMUElectricArcFurnaceCostConfig(CostModelBaseConfig):
     """Configuration class for the CMUElectricArcFurnaceCostModel.
 
     Args:
+        steel_production_capacity_tonnes_per_year (float): Rated electric arc furnace capacity
+            in tonnes of steel produced per year. Default is 2200000 tonnes/year based on the CMU
+            decarbSTEEL v5 model which assumes a 2.2 million tonne per year capacity for the EAF.
         capex_usd_per_tonne_capacity (float): Capital expenditure in USD per tonne of steel.
             Default value is 217.15 based on Vogl et al. (2018) study which is reported as
             184 Euros/tonne, converted to USD.
@@ -31,6 +34,7 @@ class CMUElectricArcFurnaceCostConfig(CostModelBaseConfig):
 
     """
 
+    steel_production_capacity_tonnes_per_year: float = field(default=2200000)
     capex_usd_per_tonne_capacity: float = field(default=217.15)
     # fraction of capex for O&M (x100 = %), 'Model Inputs & Outputs!B3'
     maintenance_cost_rate: float = field(default=0.045)
@@ -74,7 +78,7 @@ class CMUElectricArcFurnaceCostModel(CostModelBaseClass):
 
         self.add_input(
             "rated_steel_production",
-            val=0.0,
+            val=self.config.steel_production_capacity_tonnes_per_year,
             units="t/year",
             desc="Electric arc furnace rated capacity",
         )

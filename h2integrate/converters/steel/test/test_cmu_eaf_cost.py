@@ -10,6 +10,7 @@ def cost_config():
     config = {
         "model_inputs": {
             "cost_parameters": {
+                "steel_production_capacity_tonnes_per_year": 2200000,
                 "maintenance_cost_rate": 0.045,
                 "mean_annual_wage": 66173,
                 "mean_hourly_wage": 31.82,
@@ -51,9 +52,6 @@ def test_cmu_eaf_cost(cost_config, plant_config, subtests):
 
     prob.model.add_subsystem("cost", cost, promotes=["*"])
     prob.setup()
-
-    ### TODO: determine how to handle oversizing vs production value
-    prob.set_val("rated_steel_production", 2200000, units="t/year")
 
     prob.run_model()
 
