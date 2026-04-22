@@ -27,7 +27,10 @@ class CMUElectricArcFurnaceDRIPerformanceConfig(BaseConfig):
     """Configuration baseclass for CMUElectricArcFurnaceDRIPerformanceComponent.
 
     Attributes:
-        steel_production_rate_tonnes_per_year (float): capacity of the steel processing
+        steel_production_capacity_tonnes_per_year (float): Rated electric arc furnace capacity
+            in tonnes of steel produced per year. Default is 2200000 tonnes/year based on the CMU
+            decarbSTEEL v5 model which assumes a 2.2 million tonne per year capacity for the EAF.
+        steel_production_rate_tonnes_per_year (float): Expected steel production from the steel
             plant in units of metric tonnes of steel produced per year.
         steel_percent_carbon (float): mass fraction of carbon in steel output, used to determine
             mass of iron in steel output and thus mass of scrap needed, as well as feedstock
@@ -37,7 +40,8 @@ class CMUElectricArcFurnaceDRIPerformanceConfig(BaseConfig):
 
     """
 
-    steel_production_rate_tonnes_per_year: float = field(default=2.0)  # metric tons/year
+    steel_production_capacity_tonnes_per_year: float = field(default=2200000.0)
+    steel_production_rate_tonnes_per_year: float = field(default=2000000.0)  # metric tons/year
     steel_percent_carbon: float = field(
         default=0.1 / 100
     )  # mass fraction C in steel out, 'Model Inputs & Outputs!B26'
@@ -149,7 +153,15 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
             additional_cls_name=self.__class__.__name__,
         )
 
-        # annual_production = 2.0 mTons/year, 'Model Inputs & Outputs!B12'
+        # annual_capacity = 2.2 million Tons/year
+        self.add_input(
+            "rated_steel_capacity",
+            val=self.config.steel_production_capacity_tonnes_per_year,
+            units="t/year",
+            desc="Electric arc furnace rated capacity",
+        )
+
+        # annual_production = 2.0 million Tons/year, 'Model Inputs & Outputs!B12'
         self.add_input(
             "annual_production",
             val=self.config.steel_production_rate_tonnes_per_year,
@@ -157,7 +169,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
             desc="Actual steel production",
         )
 
-        # Default the steel demand input as the rated capacity
+        # Default the steel demand input as the production rate
         self.add_input(
             "steel_demand",
             val=units.convert_units(
@@ -274,13 +286,23 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         )
 
     def compute(self, inputs, outputs):
+        """
+        Computes the steel production from an electric arc furnace fed with DRI and scrap based on
+        the feedstock availability and the energy and mass balance of the system.
+        """
+        if inputs["annual_production"] > inputs["rated_steel_capacity"]:
+            raise ValueError(
+                f"Rated steel production ({inputs['annual_production']} t/year) cannot exceed "
+                f"rated steel capacity ({inputs['rated_steel_capacity']} t/year)."
+            )
+
         # calculate energy mass balance on a per ton liquid steel basis
         energy_mass_per_tonne = self.energy_mass_balance_per_unit(inputs)
 
         annual_steel_production = inputs["annual_production"]  # t/year
         # t/h, convert annual production to hourly production for
         # feedstock usage calculations based on per ton steel feedstock usage rates
-        system_capacity = units.convert_units(annual_steel_production, "t/year", "t/h")
+        system_production = units.convert_units(annual_steel_production, "t/year", "t/h")
 
         # Feedstock usage for based on "annual_production" and feedstock
         # usage rates per unit of steel production
@@ -298,8 +320,8 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
 
         # steel demand, saturated at maximum rated system capacity
         steel_demand = np.where(
-            inputs["steel_demand"] > system_capacity,
-            system_capacity,
+            inputs["steel_demand"] > system_production,
+            system_production,
             inputs["steel_demand"],
         )
 
@@ -314,7 +336,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
 
         for feedstock_type, consumption_rate in feedstocks_usage_per_tonne_steel.items():
             # calculate max inputs/outputs based on rated capacity
-            max_feedstock_consumption = system_capacity * consumption_rate
+            max_feedstock_consumption = system_production * consumption_rate
             # available feedstocks, saturated at maximum system feedstock consumption
             feedstock_available = np.where(
                 inputs[f"{feedstock_type}_in"] > max_feedstock_consumption,
@@ -329,7 +351,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         steel_production = np.minimum.reduce(steel_from_feedstocks)
 
         outputs["steel_out"] = steel_production
-        outputs["rated_steel_production"] = system_capacity
+        outputs["rated_steel_production"] = system_production
         outputs["total_steel_produced"] = outputs["steel_out"].sum()
         outputs["annual_steel_produced"] = outputs["total_steel_produced"] * (
             1 / self.fraction_of_year_simulated
