@@ -83,7 +83,19 @@ class CMUElectricArcFurnaceCostModel(CostModelBaseClass):
             desc="Electric arc furnace rated capacity",
         )
 
+        self.add_input(
+            "rated_steel_production",
+            val=0.0,
+            units="t/year",
+            desc="Rated steel production",
+        )
+
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
+        if inputs["rated_steel_production"] > inputs["rated_steel_capacity"]:
+            raise ValueError(
+                f"Rated steel production ({inputs['rated_steel_production']} t/year) cannot exceed "
+                f"rated steel capacity ({inputs['rated_steel_capacity']} t/year)."
+            )
         # 6. Production Cost
         # > CAPEX Production Assumptions
         # tons steel/year, '6. Production Cost!C26'
