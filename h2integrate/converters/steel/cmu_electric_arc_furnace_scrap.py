@@ -7,12 +7,15 @@ from h2integrate.tools.constants import (
     C_MW,
     CO_MW,
     FE_MW,
+    R_GAS,
     CAO_MW,
     CH4_MW,
     CO2_MW,
     FEO_MW,
     MGO_MW,
     SIO2_MW,
+    T_STD_K,
+    P_STD_KPA,
     LHV_CH4_MJ_PER_KG,
 )
 from h2integrate.core.model_baseclasses import PerformanceModelBaseClass
@@ -461,7 +464,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         # kg Fe consumed to produce FeO in slag per ton LS, '12. EAF Mass & Energy Balance!D85'
         output_dict["mass_Fe_to_FeO_tLS"] = moles_Fe_to_FeO_tLS * FE_MW
         # moles O2 consumed to produce FeO in slag per ton LS,
-        # '12. EAF Mass & Energy Balance!D86' TODO: Hardcoded value?
+        # '12. EAF Mass & Energy Balance!D86'
         moles_O2_to_FeO_tLS = moles_Fe_to_FeO_tLS * 0.5
 
         output_dict["mass_Fe_scrap_per_tLS"] = (
@@ -482,7 +485,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
 
         # ton, assume 0.806 tonC/tonCoal,
         # '5. Electric Arc Furnace!C10' > '12. EAF Mass & Energy Balance!D91/0.806/1000'
-        # TODO: where's the 0.806 coming from?
+        # 0.806 is the ratio of ton Carbon per ton Coal
         output_dict["coal_per_tLS"] = units.convert_units(
             mass_injected_carbon_per_tLS / 0.806, "kg", "t"
         )
@@ -490,17 +493,18 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         # kmol Carbon in NG blown out per ton LS, '12. EAF Mass & Energy Balance!D92'
         moles_C_ng_per_tLS = mass_C_ng_per_tLS / C_MW
         # kmol O2 needed to blow out NG per tLS,
-        # '12. EAF Mass & Energy Balance!D93' #TODO: Hardcoded value?
+        # '12. EAF Mass & Energy Balance!D93'
         moles_O2_ng_per_tLS = moles_C_ng_per_tLS * 1.0
         # kmol CO2 formed per tLS,
-        # '12. EAF Mass & Energy Balance!D94' #TODO: Hardcoded value?
+        # '12. EAF Mass & Energy Balance!D94'
         moles_CO2_ng_per_tLS = moles_C_ng_per_tLS * 1.0
         # kg CO2 formed per tLS, '12. EAF Mass & Energy Balance!D95'
         moles_CO2_ng_per_tLS * CO2_MW
         # kmol C per tLS, '12. EAF Mass & Energy Balance!D96'
         moles_C_injected_per_tLS = (mass_injected_carbon_per_tLS - mass_carbon_per_tLS) / C_MW
         # kmol O2 needed to blow out C in injected Carbon,
-        # '12. EAF Mass & Energy Balance!D97' #TODO: Hardcoded value?
+        # '12. EAF Mass & Energy Balance!D97'
+        # 1 mole of C reacts with 0.5 mole O2 to form 1 mole of CO
         moles_O2_injected_per_tLS = moles_C_injected_per_tLS * 0.5
 
         # kmol CO formed per tLS, '12. EAF Mass & Energy Balance!D98'
@@ -511,7 +515,7 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         moles_O2_per_tLS = moles_O2_ng_per_tLS + moles_O2_injected_per_tLS + moles_O2_to_FeO_tLS
         # Nm^3 O2 required per tLS,
         # '12. EAF Mass & Energy Balance!D101' > '5. Electric Arc Furnace!C5'
-        output_dict["oxygen_per_tLS"] = (moles_O2_per_tLS * 8.314 * 273.15) / 101.325
+        output_dict["oxygen_per_tLS"] = (moles_O2_per_tLS * R_GAS * T_STD_K) / P_STD_KPA
 
         # Electric Arc Furnace (EAF) Fed with Scrap - Flux Addition
         # (kg/kg), '12. EAF Mass & Energy Balance!D113'
@@ -665,8 +669,9 @@ class CMUElectricArcFurnaceScrapOnlyPerformanceComponent(PerformanceModelBaseCla
         # '12. EAF Mass & Energy Balance!F140' > '12. EAF Mass & Energy Balance!D81'
         slag_MgO_kg = output_dict["mass_MgO_slag_per_tLS"]
 
+        # slag_total_kJ == '12. EAF Mass & Energy Balance!G140'
         slag_total_kJ = (
-            -8.354013744345140e00  # TODO: What's this value from?
+            -8.35401374434514
             * (slag_FeO_kg + slag_SiO2_kg + slag_Al2O3_kg + slag_CaO_kg + slag_MgO_kg)
         ) * 1000
 

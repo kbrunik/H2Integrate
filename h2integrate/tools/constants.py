@@ -15,6 +15,9 @@ AL2O3_MW = 101.96  # Molecular weight of Aluminum Oxide (Al2O3) in g/mol
 LHV_CH4_MJ_PER_KG = 50.0  # Lower Heating Value of Natural Gas (Methane) in MJ/kg
 HHV_H2_MJ_PER_KG = 141.86  # Higher Heating Value of Hydrogen in MJ/kg
 faraday = 96485.3321  # Faraday constant: Electric charge per mole of electrons (C/mol)
+R_GAS = 8.314  # Universal gas constant in kJ/(kmol·K)
+T_STD_K = 273.15  # Standard temperature in Kelvin (0 °C), used for normal volume calculations
+P_STD_KPA = 101.325  # Standard atmospheric pressure in kPa
 
 # NOTE: if trying to match values exactly in CMUElectricArcFurnaceDRIPerformanceComponent
 # and CMUElectricArcFurnaceScrapOnlyPerformanceComponent with DecarbSTEEL V5 Excel model

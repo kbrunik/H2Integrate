@@ -11,12 +11,15 @@ from h2integrate.tools.constants import (
     CO_MW,
     FE_MW,
     O2_MW,
+    R_GAS,
     CAO_MW,
     CH4_MW,
     FEO_MW,
     MGO_MW,
     SIO2_MW,
+    T_STD_K,
     AL2O3_MW,
+    P_STD_KPA,
     LHV_CH4_MJ_PER_KG,
 )
 from h2integrate.core.model_baseclasses import PerformanceModelBaseClass
@@ -578,7 +581,9 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         output_dict["mass_Fe_to_FeO_tLS"] = moles_Fe_to_FeO_tLS * FE_MW
 
         # kmol O2 consumed to produce FeO per tLS, '12. EAF Mass & Energy Balance!D221'
-        moles_O2_to_FeO_tLS = moles_Fe_to_FeO_tLS * 0.5  # TODO: where's this value from
+        # 0.5 comes from the notes in '12. EAF Mass & Energy Balance!H221',
+        # 1 mole Fe reacts with 0.5 mole O2 to form 1 mole FeO
+        moles_O2_to_FeO_tLS = moles_Fe_to_FeO_tLS * 0.5
 
         # kg Carbon in Steel per tLS, '12. EAF Mass & Energy Balance!D223'
         mass_C_steel_per_tLS = mass_steel_stream * pct_carbon_steel
@@ -600,7 +605,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
             mass_injected_carbon_per_tLS = 0
         # ton, assume 0.806 tonC/tonCoal,
         # '5. Electric Arc Furnace!C35' > '12. EAF Mass & Energy Balance!D228/0.806/1000'
-        # TODO: hardcoded value?
+        # 0.806 is the ratio of ton Carbon per ton Coal
         output_dict["coal_per_tLS"] = units.convert_units(
             mass_injected_carbon_per_tLS / 0.806, "kg", "t"
         )
@@ -608,10 +613,10 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         moles_C_ng_per_tLS = mass_C_ng_per_tLS / C_MW
         # kmol Oxygen needed to blow out NG per tLS,
         # '12. EAF Mass & Energy Balance!D230', carbon in NG oxidizes to CO2 immediately
-        # TODO: Hardcoded value?
+        # From '12. EAF Mass & Energy Balance!H231', 1 mole of Carbon reacts with
+        # 1 mole O2 to form 1 mole of CO2
         moles_O2_ng_per_tLS = moles_C_ng_per_tLS * 1
         # kmol CO2 formed from NG, '12. EAF Mass & Energy Balance!D231'
-        # TODO: Hardcoded value?
         moles_CO2_ng_per_tLS = moles_C_ng_per_tLS * 1
 
         # kg CO2 formed from NG, '12. EAF Mass & Energy Balance!D232'
@@ -620,9 +625,10 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # '12. EAF Mass & Energy Balance!D233', assume remaining C originated in DRI
         moles_C_DRI_per_tLS = (mass_C_DRI_per_tLS - mass_C_steel_per_tLS) / C_MW
         # kmol Oxygen needed to blow out C in DRI per tLS, '12. EAF Mass & Energy Balance!D234'
-        # TODO: hardcoded value?
+        # per the notes in '12. EAF Mass & Energy Balance!H235', 1 mole of C reacts with
+        # 0.5 mole O2 to form 1 mole of CO
         moles_O2_DRI_per_tLS = moles_C_DRI_per_tLS * 0.5
-        # kmol CO formmed from C in DRI per tLS, '12. EAF Mass & Energy Balance!D235'
+        # kmol CO formed from C in DRI per tLS, '12. EAF Mass & Energy Balance!D235'
         moles_CO_DRI_per_tLS = moles_C_DRI_per_tLS
         # kg CO formed from C in DRI per tLS, '12. EAF Mass & Energy Balance!D236'
         mass_CO_DRI_per_tLS = moles_CO_DRI_per_tLS * CO_MW
@@ -630,7 +636,8 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # assume remaining C in steel originated in DRI or injected carbon
         moles_C_injected_per_tLS = mass_injected_carbon_per_tLS / C_MW
         # kmol O2 needed to blow out C in injected carbon, '12. EAF Mass & Energy Balance!D238'
-        # TODO: hardcoded value?
+        # per the notes in '12. EAF Mass & Energy Balance!H235', 1 mole of C reacts with
+        # 0.5 mole O2 to form 1 mole of CO
         moles_O2_injected_per_tLS = moles_C_injected_per_tLS * 0.5
 
         # kmol CO formed from C in injected carbon, '12. EAF Mass & Energy Balance!D239'
@@ -646,7 +653,7 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
             + moles_O2_DRI_per_tLS
         )
         # Nm^3 O2 required per tLS, '12. EAF Mass & Energy Balance!D242' (ideal gas law)
-        output_dict["oxygen_per_tLS"] = (moles_O2_per_tLS * 8.314 * 273.15) / 101.325
+        output_dict["oxygen_per_tLS"] = (moles_O2_per_tLS * R_GAS * T_STD_K) / P_STD_KPA
 
         # Electric Arc Furnace (EAF) Fed with DRI Directly (No ESF) - Flux Addition
         # (kg/kg), '12. EAF Mass & Energy Balance!D254'
@@ -671,7 +678,9 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # DRI, Scrap, Flux, Oxygen, Carbon
         # NOTE: Possibly replace these mole values with
         # actual enthalpy calculations from excel sheet?
-        if self.config.DRI_feed_temp == "hot":  # 873 K
+        if (
+            self.config.DRI_feed_temp == "hot"
+        ):  # 873 K; this temp assumption is baked into the enthalpy values below
             # H (J/mol) Fe,
             # '12. EAF Mass & Energy Balance!D264' > '14. Enthalpy Calculations!C235'
             DRI_Fe_J_mol = 1.8432477097027300e04
@@ -689,7 +698,9 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
 
             DRI_Al2O3_J_mol = -1.613427222924770e06
 
-        if self.config.DRI_feed_temp == "cold":  # 298 K
+        if (
+            self.config.DRI_feed_temp == "cold"
+        ):  # 298 K; this temp assumption is baked into the enthalpy values below
             # H (J/mol) Fe,
             # '12. EAF Mass & Energy Balance!D264' > '14. Enthalpy Calculations!C113'
             DRI_Fe_J_mol = 0.0
@@ -713,15 +724,11 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # kJ Fe BF pellets, '12. EAF Mass & Energy Balance!G264'
         DRI_Fe_kJ = DRI_Fe_J_mol * DRI_Fe_n_kmol
 
-        # H (J/mol) FeO, '12. EAF Mass & Energy Balance!D265' > '14. Enthalpy Calculations!C272'
-        DRI_FeO_J_mol = -2.346170978905830e05
         # kmol FeO BF pellets, '12. EAF Mass & Energy Balance!E265'
         DRI_FeO_n_kmol = mole_FeO_DRI_per_tLS
         # kJ FeO BF pellets, '12. EAF Mass & Energy Balance!G265'
         DRI_FeO_kJ = DRI_FeO_J_mol * DRI_FeO_n_kmol
 
-        # H (J/mol) C, '12. EAF Mass & Energy Balance!D266' > '14. Enthalpy Calculations!C286'
-        DRI_C_J_mol = 9.144557831628680e03
         # kg C BF pellets,
         # '12. EAF Mass & Energy Balance!F266' > '12. EAF Mass & Energy Balance!D224'
         DRI_C_kg = mass_C_DRI_per_tLS
@@ -730,8 +737,6 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # kJ C BF pellets, '12. EAF Mass & Energy Balance!G266'
         DRI_C_kJ = DRI_C_J_mol * DRI_C_n_kmol
 
-        # H (J/mol) SiO2, '12. EAF Mass & Energy Balance!D267' > '14. Enthalpy Calculations!C281'
-        DRI_SiO2_J_mol = -8.724350519581140e05
         # kg SiO2 BF pellets,
         # '12. EAF Mass & Energy Balance!F267' > '12. EAF Mass & Energy Balance!D200'
         DRI_SiO2_kg = mass_SiO2_DRI_per_tLS
@@ -740,9 +745,6 @@ class CMUElectricArcFurnaceDRIPerformanceComponent(PerformanceModelBaseClass):
         # kJ SiO2 BF pellets, '12. EAF Mass & Energy Balance!G267'
         DRI_SiO2_kJ = DRI_SiO2_J_mol * DRI_SiO2_n_kmol
 
-        # H (J/mol) Al2O3,
-        # '12. EAF Mass & Energy Balance!D268' > '14. Enthalpy Calculations!C281'
-        DRI_Al2O3_J_mol = -1.613427222924770e06
         # kg Al2O3 BF pellets,
         # '12. EAF Mass & Energy Balance!F268' > '12. EAF Mass & Energy Balance!D202'
         DRI_Al2O3_kg = mass_Al2O3_per_tLS
