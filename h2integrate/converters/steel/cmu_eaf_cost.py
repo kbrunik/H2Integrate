@@ -77,7 +77,7 @@ class CMUElectricArcFurnaceCostModel(CostModelBaseClass):
         super().setup()
 
         self.add_input(
-            "rated_steel_production",
+            "rated_steel_capacity",
             val=self.config.steel_production_capacity_tonnes_per_year,
             units="t/year",
             desc="Electric arc furnace rated capacity",
@@ -87,7 +87,7 @@ class CMUElectricArcFurnaceCostModel(CostModelBaseClass):
         # 6. Production Cost
         # > CAPEX Production Assumptions
         # tons steel/year, '6. Production Cost!C26'
-        annual_capacity = inputs["rated_steel_production"]
+        annual_capacity = inputs["rated_steel_capacity"]
         CEPCI_index_2022 = 816  # CE Index (2022), '6. Production Cost!D26'
 
         # > Financial Conversion
