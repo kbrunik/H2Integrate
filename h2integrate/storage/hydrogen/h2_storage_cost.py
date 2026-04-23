@@ -707,7 +707,7 @@ class CompressedGasStorageCostModel(HydrogenStorageBaseCostModel):
         installed_capex = depreciable_capex + land_capex + other_capex
 
         # ============================================================================
-        # Calculate OPEX - NEEDS TO BE UPDATED
+        # Calculate OPEX
         # ============================================================================
         # Operations and Maintenance costs [1]
 

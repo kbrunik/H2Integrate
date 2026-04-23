@@ -63,7 +63,7 @@ HDSAM was developed as hydrogen storage *and* transport model; we have only incl
 
 The model uses the calculation in the HDSAM "Compressed Gas H2 Terminal" sheet.
 Although HDSAM as a whole calculates the "Terminal capacity (kg/day)", and "Design terminal storage capacity (kg)" values from other sheets, our simplified CGT model instead takes these as inputs.
-- "Terminal capacity (kg/day)" from HDSAM is, in our model, set by the maximum value of the `hydrogen_in` input
+- "Terminal capacity (kg/day)" from HDSAM is, in our model, set by the maximum value of the `hydrogen_in` input across its entire timeseries
 - "Design terminal storage capacity (kg)" from HDSAM is, in our model, set by the `storage_capacity` input
 
 For all of the capital and operating costs, CEPCI indexes from with in HDSAM were used to adjust costs to the 2018 cost year that is used by the other models.
