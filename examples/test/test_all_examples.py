@@ -2808,7 +2808,7 @@ def test_cmu_eaf_scrap_only_example(subtests, temp_copy_of_example):
 
     with subtests.test("LCOS"):
         lcos = h2i.model.get_val("finance_subgroup_steel.LCOS", units="USD/kg")[0]
-        assert pytest.approx(lcos, rel=1e-4) == 0.2233
+        assert pytest.approx(lcos, rel=1e-4) == 0.2233330
 
 
 @pytest.mark.integration
