@@ -461,7 +461,9 @@ class PoseOptimization:
                 # separate out the filename without the extension
                 file_base = self.config["recorder"]["file"].split(".sql")[0]
 
-                recorder_fname = make_unique_case_name(Path(folder_output), file_base, ".sql")
+                recorder_fname = make_unique_case_name(
+                    Path(folder_output), f"{file_base}.sql", ".sql"
+                )
                 recorder_path = Path(folder_output) / recorder_fname
 
             recorder_attachment = (
