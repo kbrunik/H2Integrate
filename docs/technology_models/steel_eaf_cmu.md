@@ -21,7 +21,7 @@ The CMU EAF models are best suited for systems-level analyses where the steelmak
 Common use cases include:
 
 - **Scrap-based steelmaking studies** - evaluating electricity and natural gas demand for a scrap-charged EAF as part of a larger energy system.
-- **Green steel pathways** - coupling a DRI plant (producing sponge iron from hydrogen or natural gas) with an EAF to assess end-to-end energy, cost, and emissions.
+- **Renewable steel pathways** - coupling a DRI plant (producing sponge iron from hydrogen or natural gas) with an EAF to assess end-to-end energy, cost, and emissions.
 - **Feedstock sensitivity analysis** - varying DRI fraction, pellet grade, scrap composition, or DRI feed temperature to understand impacts on electricity and raw material consumption.
 - **Site-level integrated design** - connecting upstream resource models (wind, solar, grid) through electrolyzers and DRI furnaces to the EAF for full-system optimization.
 
@@ -35,9 +35,9 @@ Both models share a core energy and mass balance framework drawn from decarbSTEE
 1. **Mass balance** - determines slag composition (CaO, MgO, SiO2, Al₂O₃, FeO) from the charged scrap and/or DRI, then computes iron yield, fluxing agent requirements (lime and doloma), and coal injection.
 2. **Energy balance** - sums the enthalpies of all input streams (metallic charge, slag formers, oxygen, carbon) and product streams (liquid steel, slag, off-gas CO/CO₂) at the tapping temperature (~1873 K), using reference enthalpy values from decarbSTEEL. The net EAF energy demand is the difference, adjusted for empirical heat losses.
 
-### Shared feedstock inputs
+### Feedstock inputs
 
-Both models require the following upstream feedstocks, each supplied through a `FeedstockPerformanceModel` and connected via a transporter:
+Both models require upstream feedstocks, each supplied through a `FeedstockPerformanceModel` and connected via a transporter:
 
 | Feedstock | Units | Notes |
 |-----------|-------|-------|
@@ -49,13 +49,8 @@ Both models require the following upstream feedstocks, each supplied through a `
 | `coal` | t/h | Carbon injection |
 | `doloma` | t/h | MgO-bearing flux |
 | `lime` | t/h | CaO-bearing flux |
+| **DRI only**: `sponge_iron` | t/h | Sponge iron |
 
-### Shared performance parameters
-
-- `steel_production_rate_tonnes_per_year` - annual steel output (default: 2,000,000 t/year).
-- `steel_percent_carbon` - mass fraction of carbon in the tapped steel (default: 0.001).
-- `scrap_composition` - dictionary with mass fractions of `Fe` and `SiO2` in the scrap charge.
-- `energy_mass_balance_dict` - dictionary of process parameters including natural gas intensity, electrode consumption rate, slag basicity, slag composition targets, and electricity consumption. See the sections below for details.
 
 (cmu-eaf-scrap-only)=
 ## Scrap-only EAF performance
@@ -71,21 +66,6 @@ This model represents a conventional EAF charged entirely with scrap steel. The 
 
 Key outputs include consumable rates (oxygen, lime, doloma, coal, electricity per tLS), slag mass and composition, and iron yield from scrap. The heat loss fraction is computed endogenously from the energy balance.
 
-### `energy_mass_balance_dict` Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `natural_gas` | 0.44 | MMBtu per ton steel |
-| `electrodes` | 2.00 | kg per ton steel |
-| `slag_basicity` | 1.50 | kg CaO / (kg SiO₂ + kg Al₂O₃) |
-| `mass_Al2O3_slag_per_tscrap` | 0.0 | kg Al₂O₃ per tonne scrap |
-| `mass_Al2O3_slag_per_tLS` | 0.0 | kg Al₂O₃ per tonne liquid steel |
-| `pct_MgO_slag` | 0.12 | Mass fraction MgO in slag |
-| `pct_FeO_slag` | 0.30 | Mass fraction FeO in slag |
-| `pct_carbon_steel_tap` | 0.03 | Carbon fraction at tap |
-| `CaO_MgO_ratio` | 1.4 | 56/40 molar ratio |
-| `electricity_kWh_per_tonne_steel` | 470.0 | kWh per tonne steel |
-
 (cmu-eaf-dri)=
 ## DRI + Scrap EAF performance
 
@@ -100,25 +80,6 @@ This model extends the scrap-only model to handle a mixed charge of **direct red
 
 The energy and mass balance is computed per tonne of DRI charged, then converted to a per-tonne-liquid-steel basis. The heat loss adjustment is taken from the scrap-only model via the `EAF_scrap_heat_loss_adjustment_abs` parameter, ensuring thermodynamic consistency between the two model variants.
 
-### Additional performance parameters
-
-- `pellet_grade` - grade of DRI pellet: `"DR"` (direct-reduction grade), `"BF"` (blast-furnace grade), or `"custom"`. This sets the DRI composition and gangue SiO₂/Al₂O₃ ratio automatically.
-- `DRI_feed_temp` - `"hot"` (873 K) or `"cold"` (298 K). Hot charging reduces EAF electricity demand.
-- `pct_DRI` - mass fraction of DRI in the total metallic charge (default: 0.60).
-- `DRI_composition` - auto-populated from `pellet_grade`, or user-specified for `"custom"`. Contains mass fractions of `Fe`, `FeO`, `gangue`, and `C`.
-
-```{note}
-When using `pellet_grade: "custom"`, you must provide both `DRI_composition` (with keys `Fe`, `FeO`, `gangue`, `C`) and `SiO2_ratio` (the SiO₂ to Al₂O₃ mass ratio in the gangue). For `"DR"` and `"BF"` grades these are set automatically from decarbSTEEL reference data.
-```
-
-### DRI-Specific `energy_mass_balance_dict` parameters
-
-In addition to all parameters listed in the scrap-only model, the DRI model requires:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `EAF_scrap_heat_loss_adjustment_abs` | 170.06 | kWh/tLS heat loss from scrap model |
-
 (cmu-eaf-cost)=
 ## EAF cost model
 
@@ -130,20 +91,6 @@ cost_model:
 ```
 
 A shared cost model for both EAF variants, calibrated to decarbSTEEL v5 with costs in **2022 USD**.
-
-### Cost parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `capex_usd_per_tonne_capacity` | 217.15 | $/t annual capacity |
-| `maintenance_cost_rate` | 0.045 | Fraction of CapEx for annual maintenance |
-| `mean_hourly_wage` | 31.82 | $/hour, US steel workers (2022) |
-| `eaf_labor_required_per_tLS` | 0.20 | Person-hours per tonne liquid steel |
-| `cost_year` | 2022 | Dollar year (must be 2022) |
-
-```{note}
-The `cost_year` parameter is validated to equal 2022. H2Integrate's cost-year adjustment framework will handle inflation adjustments to the target dollar year specified in `plant_config`.
-```
 
 ### Outputs
 

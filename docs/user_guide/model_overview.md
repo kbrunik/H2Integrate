@@ -148,6 +148,9 @@ Below summarizes the available performance, cost, and financial models for each 
         + `'SteelPerformanceModel'`
         + `'NaturalGasEAFPlantPerformanceComponent'`
         + `'HydrogenEAFPlantPerformanceComponent'`
+        + `'CMUElectricArcFurnaceScrapOnlyPerformanceComponent'`
+        + `'CMUElectricArcFurnaceDRIPerformanceComponent'`
+        + `'CMUElectricArcFurnaceCostModel'`
     - combined cost and financial models:
         + `'SteelCostAndFinancialModel'`
     - cost models:
