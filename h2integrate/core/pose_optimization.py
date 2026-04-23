@@ -39,31 +39,6 @@ class PoseOptimization:
             "NSGA2",
         ]
 
-    def get_number_design_variables(self):
-        """
-        This method counts the number of design variables required given
-        the provided set up and returns the result
-
-        Returns:
-            int: number of design variables
-        """
-        # Determine the number of design variables
-        n_DV = 0
-
-        for tech_dvars in self.config["design_variables"].values():
-            for dvar_params in tech_dvars.values():
-                if dvar_params.get("flag", False):
-                    n_DV += 1
-
-        # Wrap-up at end with multiplier for finite differencing
-        if "form" in self.config["driver"]["optimization"].keys():
-            if (
-                self.config["driver"]["optimization"]["form"] == "central"
-            ):  # TODO this should probably be handled at the MPI point to avoid confusion with n_DV being double what would be expected
-                n_DV *= 2
-
-        return n_DV
-
     def _get_step_size(self):
         """
         If a step size for the driver-level finite differencing is provided,
