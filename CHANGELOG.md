@@ -4,6 +4,7 @@
 - Change commodity in DRI and EAF model from pig iron to sponge iron based on likely carbon content [PR 670](https://github.com/NatLabRockies/H2Integrate/pull/670)
 - Bugfix for round-trip efficiency handling when calling `check_inputs` around `StoragePerformanceModel` [PR 684](https://github.com/NatLabRockies/H2Integrate/pull/684)
 - Bugfix. Include nuclear in electricity producing tech list and improve error message for zero-length electricity producing techs in model when electricity is specified as the commodity. [PR 685](https://github.com/NatLabRockies/H2Integrate/pull/685)
+- Renamed `{commodity}_demand` inputs to `{commodity}_set_point` on all converter performance components to align with storage baseclass naming and distinguish converter operating targets from demand components. [PR 691](https://github.com/NatLabRockies/H2Integrate/pull/691)
 - Add electric arc furnace performance and cost models based on the Carnegie Mellon University DecarbSTEEL v5 excel model [PR 686](https://github.com/NatLabRockies/H2Integrate/pull/686)
   - Adds scrap-only performance model
   - Adds DRI + scrap performance model
