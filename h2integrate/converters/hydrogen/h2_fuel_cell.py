@@ -57,6 +57,8 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
             additional_cls_name=self.__class__.__name__,
         )
 
+        # Add natural gas input, default to 0 --> set using feedstock component
+        # or upstream hydrogen converter component
         self.add_input(
             "hydrogen_in",
             val=0.0,
@@ -71,6 +73,7 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
             desc="HHV efficiency of the fuel cell (0 <= efficiency <= 1)",
         )
 
+        # Add rated capacity as an input with config value as default
         self.add_input(
             "system_capacity",
             val=self.config.system_capacity_kw,
@@ -86,6 +89,15 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
             desc="Mass flow rate of hydrogen consumed by the fuel cell",
         )
 
+        # Default the electricity set point input as the rated capacity
+        self.add_input(
+            f"{self.commodity}_set_point",
+            val=self.config.system_capacity_kw,
+            shape=self.n_timesteps,
+            units=self.commodity_rate_units,
+            desc="Electricity set point for natural gas plant",
+        )
+
     def compute(self, inputs, outputs):
         """
         Compute electricity output from the fuel cell based on hydrogen input
@@ -98,9 +110,34 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
                 hydrogen_consumed.
         """
 
+        # calculate max input and output
+        system_capacity = inputs["system_capacity"]  # plant capacity in kW
         hydrogen_in = inputs["hydrogen_in"]  # kg/h
         fuel_cell_efficiency = inputs["fuel_cell_efficiency"]
-        system_capacity_kW = inputs["system_capacity"]
+        max_h2_consumption = (
+            system_capacity * (3600.0 * 0.001) / (fuel_cell_efficiency * HHV_H2_MJ_PER_KG)
+        )
+
+        # electrical set point, saturated at maximum rated system capacity
+        electricity_set_point = np.where(
+            inputs["electricity_set_point"] > system_capacity,
+            system_capacity,
+            inputs["electricity_set_point"],
+        )
+
+        h2_demand = (
+            electricity_set_point * (3600.0 * 0.001) / (fuel_cell_efficiency * HHV_H2_MJ_PER_KG)
+        )
+
+        # available feedstock, saturated at maximum system feedstock consumption
+        h2_available = np.where(
+            inputs["hydrogen_in"] > max_h2_consumption,
+            max_h2_consumption,
+            inputs["hydrogen_in"],
+        )
+
+        # h2 consumed is minimum between available feedstock and output demand
+        hydrogen_in = np.minimum(h2_available, h2_demand)
 
         # make any negative hydrogen input zero
         hydrogen_in = np.maximum(hydrogen_in, 0.0)
@@ -112,16 +149,16 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
         # kW = kg/h * - * MJ/kg * (1 h / 3600 s) * (1 kW / 0.001 MJ/s)
 
         # clip the electricity output to the system capacity
-        outputs["electricity_out"] = np.minimum(electricity_out_kw, system_capacity_kW)
+        outputs["electricity_out"] = np.minimum(electricity_out_kw, system_capacity)
         outputs["total_electricity_produced"] = np.sum(outputs["electricity_out"]) * (
             self.dt / 3600
         )
-        outputs["rated_electricity_production"] = system_capacity_kW
+        outputs["rated_electricity_production"] = system_capacity
         outputs["annual_electricity_produced"] = outputs["total_electricity_produced"] * (
             1 / self.fraction_of_year_simulated
         )
         outputs["capacity_factor"] = outputs["total_electricity_produced"] / (
-            system_capacity_kW * self.n_timesteps * (self.dt / 3600)
+            system_capacity * self.n_timesteps * (self.dt / 3600)
         )
         outputs["hydrogen_consumed"] = outputs["electricity_out"] / (
             fuel_cell_efficiency * HHV_H2_MJ_PER_KG / (3600.0 * 0.001)
