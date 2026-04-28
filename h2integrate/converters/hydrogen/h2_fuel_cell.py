@@ -105,7 +105,7 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
 
         Args:
             inputs: OpenMDAO inputs object containing hydrogen_in, fuel cell
-                HHV efficiency, and system_capacity.
+                HHV efficiency, electricity_set_point, and system_capacity.
             outputs: OpenMDAO outputs object for electricity_out,
                 hydrogen_consumed.
         """
