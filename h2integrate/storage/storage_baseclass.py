@@ -321,7 +321,7 @@ class StoragePerformanceBase(PerformanceModelBaseClass):
         storage_capacity: float,
         sim_start_index: int = 0,
     ):
-        """Run the storage model over a control window of ``n_control_window_hours`` timesteps.
+        """Run the storage model over a control window of ``n_control_window_hours`` length of time.
 
         Iterates through ``storage_dispatch_commands`` one timestep at a time.
         A negative command requests charging; a positive command requests
