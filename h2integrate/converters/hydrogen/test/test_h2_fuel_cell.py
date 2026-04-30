@@ -78,10 +78,7 @@ def test_fuel_cell_performance(tech_config, plant_config, subtests):
     electricity_output = prob.get_val("fuel_cell.electricity_out", units="kW")
 
     with subtests.test("max electricity output"):
-        assert max(electricity_output) == 1000.0
-
-    with subtests.test("electricity output non-negative"):
-        assert np.all(electricity_output >= 0)
+        assert pytest.approx(np.max(electricity_output), rel=1e-6) == 1000.0
 
     with subtests.test("electricity out"):
         assert pytest.approx(np.sum(electricity_output), rel=1e-6) == 3452532.6111

@@ -114,9 +114,11 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
         system_capacity = inputs["system_capacity"]  # plant capacity in kW
         hydrogen_in = inputs["hydrogen_in"]  # kg/h
         fuel_cell_efficiency = inputs["fuel_cell_efficiency"]
-        max_h2_consumption = (
-            system_capacity * (3600.0 * 0.001) / (fuel_cell_efficiency * HHV_H2_MJ_PER_KG)
-        )
+
+        # conversion factor: kW electricity to kg/h hydrogen, units: (kg/h)/kW
+        kw_to_kgh_h2 = (3600.0 * 0.001) / (fuel_cell_efficiency * HHV_H2_MJ_PER_KG)
+
+        max_h2_consumption = system_capacity * kw_to_kgh_h2
 
         # electrical set point, saturated at maximum rated system capacity
         electricity_set_point = np.where(
@@ -125,9 +127,7 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
             inputs["electricity_set_point"],
         )
 
-        h2_demand = (
-            electricity_set_point * (3600.0 * 0.001) / (fuel_cell_efficiency * HHV_H2_MJ_PER_KG)
-        )
+        h2_demand = electricity_set_point * kw_to_kgh_h2
 
         # available feedstock, saturated at maximum system feedstock consumption
         h2_available = np.where(
@@ -143,10 +143,7 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
         hydrogen_in = np.maximum(hydrogen_in, 0.0)
 
         # calculate electricity output in kW
-        electricity_out_kw = (
-            hydrogen_in * fuel_cell_efficiency * HHV_H2_MJ_PER_KG / (3600.0 * 0.001)
-        )
-        # kW = kg/h * - * MJ/kg * (1 h / 3600 s) * (1 kW / 0.001 MJ/s)
+        electricity_out_kw = hydrogen_in / kw_to_kgh_h2
 
         # clip the electricity output to the system capacity
         outputs["electricity_out"] = np.minimum(electricity_out_kw, system_capacity)
@@ -160,9 +157,7 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
         outputs["capacity_factor"] = outputs["total_electricity_produced"] / (
             system_capacity * self.n_timesteps * (self.dt / 3600)
         )
-        outputs["hydrogen_consumed"] = outputs["electricity_out"] / (
-            fuel_cell_efficiency * HHV_H2_MJ_PER_KG / (3600.0 * 0.001)
-        )
+        outputs["hydrogen_consumed"] = outputs["electricity_out"] * kw_to_kgh_h2
 
 
 @define(kw_only=True)
