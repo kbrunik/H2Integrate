@@ -154,23 +154,30 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
         n_hours_eol = self.config.uptime_hours_until_eol
         on_off_status = np.where(electricity_out_kw > 0, 1, 0)
 
-        # calculate the refurbishment schedule based on the existence hours until EOL
-        i_replace = np.argwhere(
-            np.cumsum(np.tile(on_off_status, self.plant_life)) % n_hours_eol == 0
-        )
+        # Calculate cumulative hours and find all crossings of n_hours_eol multiples
+        cumsum_hours = np.cumsum(np.tile(on_off_status, self.plant_life))
 
-        # remove zero index since it should be new at beginning of simulation
-        i_replace = i_replace[i_replace > 0]
+        # Find all replacement thresholds (n_hours_eol, 2*n_hours_eol, 3*n_hours_eol, ...)
+        max_hours = np.max(cumsum_hours)
+        n_replacements = int(max_hours / n_hours_eol)
 
-        # Get annual replacement schedule
-        i_replace = np.round(i_replace / self.n_timesteps)
+        # For each replacement threshold, find the first index where cumsum >= threshold
+        i_replace = []
+        for k in range(1, n_replacements + 1):
+            threshold = k * n_hours_eol
+            # Find first index where cumsum >= threshold
+            idx = np.searchsorted(cumsum_hours, threshold, side="left")
+            if idx < len(cumsum_hours):
+                i_replace.append(idx)
 
-        # remove duplicate indices that occur when the system is off for multiple
-        # consecutive timesteps at the time of replacement
-        i_replace = i_replace[np.insert(np.diff(i_replace) > 1, 0, True)].astype(int)
+        i_replace = np.array(i_replace) if i_replace else np.array([], dtype=int)
 
+        # Convert indices to years and count replacements per year
         refurb_schedule = np.zeros(self.plant_life)
-        refurb_schedule[i_replace - 1] = 1
+        for idx in i_replace:
+            year = int(np.floor(idx / self.n_timesteps))
+            if 0 <= year < self.plant_life:
+                refurb_schedule[year] += 1
 
         # The replacement_schedule is the fraction of the total capacity that is replaced per year
         # The replacement_schedule may be used in the finance model if the replacement_cost_percent
