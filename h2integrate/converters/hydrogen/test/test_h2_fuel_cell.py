@@ -30,6 +30,7 @@ def tech_config():
             "performance_parameters": {
                 "system_capacity_kw": 1000.0,
                 "fuel_cell_efficiency_hhv": 0.50,
+                "uptime_hours_until_eol": (8760 * 2),
             }
         }
     }
@@ -120,6 +121,44 @@ def test_fuel_cell_performance(tech_config, plant_config, subtests):
                 np.sum(prob.get_val("fuel_cell.hydrogen_consumed", units="kg/h")), rel=1e-6
             )
             == 175230.7542647681
+        )
+
+    with subtests.test("refurbishment_schedule"):
+        np.testing.assert_allclose(
+            prob.get_val("fuel_cell.replacement_schedule", units="unitless"),
+            [
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+                0.0,
+                1.0,
+            ],
+            atol=1e-6,
         )
 
 

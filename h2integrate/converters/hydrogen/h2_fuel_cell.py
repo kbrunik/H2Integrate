@@ -19,10 +19,13 @@ class LinearH2FuelCellPerformanceConfig(BaseConfig):
         system_capacity_kw (float): The capacity of the fuel cell system in kilowatts (kW).
         fuel_cell_efficiency_hhv (float): The higher heating value efficiency of the
             fuel cell (0 <= efficiency <= 1).
+        uptime_hours_until_eol (int): Number of "on" hours until the electrolyzer reaches
+            end-of-life (EOL).
     """
 
     system_capacity_kw: float = field(validator=gte_zero)
     fuel_cell_efficiency_hhv: float = field(validator=range_val(0, 1))
+    uptime_hours_until_eol: int = field(validator=gte_zero)
 
 
 class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
@@ -145,6 +148,35 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
 
         # calculate electricity output in kW
         electricity_out_kw = hydrogen_in / kw_to_kgh_h2
+
+        # calculate replacement schedule based on cumulative "on" hours, where "on" hours
+        # are timesteps where electricity output is greater than zero
+        n_hours_eol = self.config.uptime_hours_until_eol
+        on_off_status = np.where(electricity_out_kw > 0, 1, 0)
+
+        # calculate the refurbishment schedule based on the existence hours until EOL
+        i_replace = np.argwhere(
+            np.cumsum(np.tile(on_off_status, self.plant_life)) % n_hours_eol == 0
+        )
+
+        # remove zero index since it should be new at beginning of simulation
+        i_replace = i_replace[i_replace > 0]
+
+        # Get annual replacement schedule
+        i_replace = np.round(i_replace / self.n_timesteps)
+
+        # remove duplicate indices that occur when the system is off for multiple
+        # consecutive timesteps at the time of replacement
+        i_replace = i_replace[np.insert(np.diff(i_replace) > 1, 0, True)].astype(int)
+
+        refurb_schedule = np.zeros(self.plant_life)
+        refurb_schedule[i_replace - 1] = 1
+
+        # The replacement_schedule is the fraction of the total capacity that is replaced per year
+        # The replacement_schedule may be used in the finance model if the replacement_cost_percent
+        # is specified in the tech_config under
+        # ['model_inputs']['finance_parameters']['capital_items']['replacement_cost_percent']
+        outputs["replacement_schedule"] = refurb_schedule
 
         # clip the electricity output to the system capacity
         outputs["electricity_out"] = np.minimum(electricity_out_kw, system_capacity)
