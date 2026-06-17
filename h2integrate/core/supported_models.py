@@ -159,6 +159,7 @@ supported_models = _ModelRegistry(
         "OptimizedDispatchStorageController": "control.control_strategies.storage:OptimizedDispatchStorageController",
         "GenericDemandComponent": "demand:GenericDemandComponent",
         "FlexibleDemandComponent": "demand:FlexibleDemandComponent",
+        "PeakLoadManagementHeuristicOpenLoopConverterController": "control.control_strategies.converters:PeakLoadManagementHeuristicOpenLoopConverterController",
         # Dispatch
         "PyomoDispatchGenericConverter": "control.control_rules.converters:PyomoDispatchGenericConverter",
         "PyomoRuleStorageBaseclass": "control.control_rules.storage:PyomoRuleStorageBaseclass",
@@ -187,7 +188,6 @@ supported_models = _ModelRegistry(
         "ProfitMaximizationControl": "control.control_strategies.system_level.profit_maximization_control:ProfitMaximizationControl",
     }
 )
-
 
 # This next section is to demarcate specific models that belong to certain categories that are
 # relevant for processing in the model stackup. Right now, these designations are
