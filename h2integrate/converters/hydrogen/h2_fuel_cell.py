@@ -165,13 +165,19 @@ class LinearH2FuelCellPerformanceModel(PerformanceModelBaseClass):
 class H2FuelCellCostConfig(CostModelBaseConfig):
     """Configuration class for the hydrogen fuel cell cost model.
 
-    Fields include `system_capacity_kw`, `capex_per_kw`, and `fixed_opex_per_kw_per_year`.
-    The `cost_year` field is inherited from `CostModelBaseConfig`.
+    Attributes:
+        system_capacity_kw (float): The capacity of the fuel cell system in kilowatts (kW).
+        capex_per_kw (float): Capital cost per unit of capacity in USD/kW.
+        fixed_opex_per_kw_per_year (float): Fixed operating expenses per unit of capacity per year
+            in USD/(kW*year).
+        variable_opex_per_kwh (float): Variable operating expenses per unit of capacity per year in
+            USD/(kWh).
     """
 
     system_capacity_kw: float = field(validator=gte_zero)
     capex_per_kw: float = field(validator=gte_zero)
     fixed_opex_per_kw_per_year: float = field(validator=gte_zero)
+    variable_opex_per_kwh: float = field(validator=gte_zero)
 
 
 class H2FuelCellCostModel(CostModelBaseClass):
@@ -216,6 +222,20 @@ class H2FuelCellCostModel(CostModelBaseClass):
             desc="Fixed operating expenses per unit capacity per year",
         )
 
+        self.add_input(
+            "unit_varopex",
+            val=self.config.variable_opex_per_kwh,
+            units="USD/(kW*h)",
+            desc="Variable operating expenses per unit of electricity produced",
+        )
+
+        self.add_input(
+            "annual_electricity_produced",
+            val=0.0,
+            shape=self.plant_life,
+            units="(kW*h)/year",
+        )
+
     def compute(self, inputs, outputs, discrete_inputs, discrete_outputs):
         """
         Compute capital and fixed operating costs for the fuel cell system.
@@ -232,3 +252,6 @@ class H2FuelCellCostModel(CostModelBaseClass):
 
         # Calculate fixed operating cost per year
         outputs["OpEx"] = system_capacity_kw * inputs["fixed_opex_per_year"]
+
+        # Calculate variable operating cost per year
+        outputs["VarOpEx"] = inputs["annual_electricity_produced"] * inputs["unit_varopex"]
