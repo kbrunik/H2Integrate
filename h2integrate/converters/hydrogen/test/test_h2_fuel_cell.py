@@ -30,7 +30,7 @@ def tech_config():
             "performance_parameters": {
                 "system_capacity_kw": 1000.0,
                 "fuel_cell_efficiency_hhv": 0.50,
-                "uptime_hours_until_eol": (8760 * 2.0),
+                "uptime_hours_until_eol": (8760 * 7.0),
             }
         }
     }
@@ -126,7 +126,7 @@ def test_fuel_cell_performance(tech_config, plant_config, subtests):
     with subtests.test("refurbishment_schedule"):
         np.testing.assert_allclose(
             prob.get_val("fuel_cell.replacement_schedule", units="unitless"),
-            np.tile([0, 1], 15),
+            np.tile([0, 0, 0, 0, 0, 0, 1], 15)[:30],
             atol=1e-6,
         )
 
@@ -160,6 +160,39 @@ def test_fuel_cell_performance(tech_config, plant_config, subtests):
         np.testing.assert_allclose(
             prob.get_val("fuel_cell.replacement_schedule", units="unitless"),
             np.tile([0, 1, 1], 10),
+            atol=1e-6,
+        )
+
+    with subtests.test("refurbishment_schedule_multiple_replacements_in_some_years"):
+        n_timesteps = int(plant_config["plant"]["simulation"]["n_timesteps"])
+        tech_config_copy = tech_config
+        tech_config_copy["model_inputs"]["performance_parameters"]["uptime_hours_until_eol"] = (
+            8760 * 0.75
+        )
+        prob = om.Problem()
+
+        fuel_cell_2 = LinearH2FuelCellPerformanceModel(
+            plant_config=plant_config, tech_config=tech_config_copy, driver_config={}
+        )
+
+        prob.model.add_subsystem("fuel_cell", fuel_cell_2, promotes=["*"])
+
+        prob.setup()
+
+        hydrogen_input = np.ones(n_timesteps) * 20.0  # kg/h
+        hydrogen_input[0] = (
+            500000000.0  # test case of extreme hydrogen input to check system capacity limit
+        )
+
+        prob.set_val("fuel_cell.hydrogen_in", hydrogen_input, units="kg/h")
+
+        prob.run_model()
+
+        # Check that electricity output is less than or equal to system capacity
+        electricity_output = prob.get_val("fuel_cell.electricity_out", units="kW")
+        np.testing.assert_allclose(
+            prob.get_val("fuel_cell.replacement_schedule", units="unitless"),
+            np.tile([1, 1, 2], 10),
             atol=1e-6,
         )
 
