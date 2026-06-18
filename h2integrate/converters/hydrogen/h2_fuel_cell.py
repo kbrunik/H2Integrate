@@ -209,7 +209,7 @@ class H2FuelCellCostConfig(CostModelBaseConfig):
         capex_per_kw (float): Capital cost per unit of capacity in USD/kW.
         fixed_opex_per_kw_per_year (float): Fixed operating expenses per unit of capacity per year
             in USD/(kW*year).
-        variable_opex_per_kwh (float): Variable operating expenses per unit of capacity per year in
+variable_opex_per_kwh (float): Variable operating expenses per unit of production per year in
             USD/(kWh).
     """
 
